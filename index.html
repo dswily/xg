@@ -756,6 +756,15 @@
             let day = this.dailyRecords.value[dateStr] || {};
             return Object.values(day).filter(v => v === true).length;
         },
+        // base64编码处理（支持UTF-8）
+        utf8ToBase64(str) {
+            return btoa(unescape(encodeURIComponent(str)));
+        },
+        
+        base64ToUtf8(str) {
+            return decodeURIComponent(escape(atob(str)));
+        },
+        
         // GitHub数据存储相关
         get githubRepoOwner() {
             return localStorage.getItem('githubRepoOwner') || 'your-github-username';
@@ -785,27 +794,43 @@
                 
                 // 再尝试保存到GitHub
                 if (this.githubToken) {
-                    await this.saveToGitHub();
+                    try {
+                        await this.saveToGitHub();
+                    } catch (error) {
+                        console.error('GitHub同步失败:', error);
+                        // GitHub同步失败不影响本地保存
+                        this.showToast('数据已保存到本地，GitHub同步失败: ' + error.message, 3000);
+                    }
                 } else {
                     console.log('GitHub Token未设置，仅保存到localStorage');
+                    this.showToast('数据已保存到本地', 2500);
                 }
             } catch (error) {
                 console.error('保存数据失败:', error);
-                this.showToast('数据保存失败，请检查GitHub Token设置', 2000);
+                this.showToast('数据保存失败: ' + error.message, 3000);
             }
         },
         
         // 加载所有数据
-        loadAll() {
+        async loadAll() {
             try {
                 // 先尝试从GitHub加载数据
-                this.loadFromGitHub().catch(() => {
-                    // 如果GitHub加载失败，尝试从localStorage加载
+                if (this.githubToken) {
+                    try {
+                        await this.loadFromGitHub();
+                    } catch (error) {
+                        console.error('从GitHub加载数据失败:', error);
+                        // GitHub加载失败，尝试从localStorage加载
+                        this.showToast('从GitHub加载数据失败，尝试从本地加载: ' + error.message, 3000);
+                        this.loadFromLocalStorage();
+                    }
+                } else {
+                    // 没有GitHub Token，从localStorage加载
                     this.loadFromLocalStorage();
-                });
+                }
             } catch (error) {
                 console.error('加载数据失败:', error);
-                this.showToast('数据加载失败，使用默认数据', 2000);
+                this.showToast('数据加载失败，使用默认数据: ' + error.message, 3000);
                 // 重置为默认数据
                 this.resetToDefaultData();
             }
@@ -832,7 +857,7 @@
                 }
                 
                 const data = await response.json();
-                const content = atob(data.content);
+                const content = this.base64ToUtf8(data.content);
                 const jsonData = JSON.parse(content);
                 
                 // 加载数据
@@ -852,7 +877,7 @@
                 }
                 
                 console.log('从GitHub加载数据成功');
-                this.showToast('从云端加载数据成功', 1500);
+                this.showToast('从云端加载数据成功', 2500);
             } catch (error) {
                 console.error('从GitHub加载数据失败:', error);
                 throw error;
@@ -962,22 +987,38 @@
                     rewardHistory: JSON.parse(localStorage.getItem('rewardHistory') || '[]')
                 };
                 
-                // 获取当前文件的sha值
-                const url = `https://api.github.com/repos/${this.githubRepoOwner}/${this.githubRepoName}/contents/${this.githubDataPath}`;
-                const response = await fetch(url, {
-                    headers: {
-                        'Authorization': `token ${this.githubToken}`,
-                        'Accept': 'application/vnd.github.v3+json'
-                    }
-                });
-                
-                let sha = '';
-                if (response.ok) {
-                    const data = await response.json();
-                    sha = data.sha;
+                // 检查配置是否完整
+                if (!this.githubRepoOwner || !this.githubRepoName || !this.githubToken) {
+                    throw new Error('GitHub配置不完整');
                 }
                 
-                // 更新文件
+                // 获取当前文件的sha值
+                const url = `https://api.github.com/repos/${this.githubRepoOwner}/${this.githubRepoName}/contents/${this.githubDataPath}`;
+                let sha = '';
+                
+                try {
+                    const response = await fetch(url, {
+                        headers: {
+                            'Authorization': `token ${this.githubToken}`,
+                            'Accept': 'application/vnd.github.v3+json'
+                        }
+                    });
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        sha = data.sha;
+                        console.log('找到现有文件，使用sha:', sha);
+                    } else if (response.status === 404) {
+                        console.log('文件不存在，将创建新文件');
+                    } else {
+                        throw new Error(`GitHub API请求失败: ${response.status} ${response.statusText}`);
+                    }
+                } catch (error) {
+                    console.error('获取文件信息失败:', error);
+                    // 继续执行，尝试创建文件
+                }
+                
+                // 更新或创建文件
                 const updateResponse = await fetch(url, {
                     method: 'PUT',
                     headers: {
@@ -987,19 +1028,21 @@
                     },
                     body: JSON.stringify({
                         message: '更新习惯追踪数据',
-                        content: btoa(JSON.stringify(allData, null, 2)),
+                        content: this.utf8ToBase64(JSON.stringify(allData, null, 2)),
                         sha: sha
                     })
                 });
                 
                 if (!updateResponse.ok) {
-                    throw new Error('GitHub API更新失败');
+                    const errorData = await updateResponse.json().catch(() => ({}));
+                    throw new Error(`GitHub API更新失败: ${updateResponse.status} ${updateResponse.statusText}\n${errorData.message || ''}`);
                 }
                 
                 console.log('保存到GitHub成功');
-                this.showToast('数据已同步到云端', 1500);
+                this.showToast('数据已同步到云端', 2500);
             } catch (error) {
                 console.error('保存到GitHub失败:', error);
+                this.showToast(`保存到GitHub失败: ${error.message}`, 3000);
                 throw error;
             }
         },
@@ -1022,7 +1065,7 @@
                 throw error;
             }
         },
-        showToast(msg, duration=2000) {
+        showToast(msg, duration=3000) {
             this.toastMsg.value = msg;
             setTimeout(() => { this.toastMsg.value = ""; }, duration);
         },
@@ -1191,7 +1234,7 @@
                     const completedCount = Object.values(dailyRecords.value[today]).filter(v => v === true).length;
                     
                     if (completedCount > dailyGoal.value && !hasTodayExtraBonus()) {
-                        store.showToast(`🎊 超级厉害！超出目标，额外+1星星 🎊`, 2000);
+                        store.showToast(`🎊 超级厉害！超出目标，额外+1星星 🎊`, 3000);
                         const x = window.innerWidth / 2;
                         const y = window.innerHeight - 100;
                         store.addEffect(x, y, "⭐");
@@ -1215,7 +1258,7 @@
                             reason: `超出目标额外奖励`
                         });
                     } else {
-                        store.showToast(`🎉 太棒啦！ +1星星 🎉`, 2000);
+                        store.showToast(`🎉 太棒啦！ +1星星 🎉`, 3000);
                         const x = window.innerWidth / 2;
                         const y = window.innerHeight - 100;
                         store.addEffect(x, y, "⭐");
@@ -1230,7 +1273,7 @@
                         });
                     }
                 } else {
-                    store.showToast("💪 取消打卡，星星-1", 2000);
+                    store.showToast("💪 取消打卡，星星-1", 3000);
                     
                     starHistory.unshift({
                         id: Date.now() + '_' + Math.random(),
@@ -1249,7 +1292,7 @@
                             amount: 1,
                             reason: `取消后未超出目标，额外奖励取消`
                         });
-                        store.showToast("⭐ 未达到目标，额外奖励已取消", 2000);
+                        store.showToast("⭐ 未达到目标，额外奖励已取消", 3000);
                     }
                 }
                 
@@ -1629,7 +1672,7 @@
                 // 无论是否选择日期，都应用自定义时间段
                 currentPeriod.value = 'custom';
                 renderChart();
-                store.showToast("已应用自定义时间段", 1500);
+                store.showToast("已应用自定义时间段", 2500);
             };
             
             // 星星获得统计相关方法
@@ -1652,7 +1695,7 @@
             const applyCustomStar = () => {
                 currentStarPeriod.value = 'custom';
                 renderStarChart();
-                store.showToast("已应用自定义时间段", 1500);
+                store.showToast("已应用自定义时间段", 2500);
             };
             
             // 获取星星获得统计的日期范围
@@ -1927,9 +1970,9 @@
                     store.totalStars.value = store.getTotalCompletedCount() - store.getTotalSpentStars();
                     loadRewardHistory();
                     
-                    store.showToast(`🎁 获得 ${reward.icon} ${reward.name}！好漂亮呀～`, 2000);
+                    store.showToast(`🎁 获得 ${reward.icon} ${reward.name}！好漂亮呀～`, 3000);
                 } else {
-                    store.showToast(`⭐ 星星不足，完成更多习惯吧～`, 2000);
+                    store.showToast(`⭐ 星星不足，完成更多习惯吧～`, 3000);
                 }
             };
             
@@ -1957,7 +2000,7 @@
                         // 强制刷新数据
                         loadRewardHistory();
                         
-                        store.showToast(`✨ ${reward.icon} ${reward.name} 使用成功！`, 2000);
+                        store.showToast(`✨ ${reward.icon} ${reward.name} 使用成功！`, 3000);
                     }
                 }
             };
@@ -2092,9 +2135,12 @@
                             
                             <h4>💾 数据存储</h4>
                             <ul style="list-style-type: disc; margin-left: 20px; margin-top: 5px;">
-                                <li>所有数据存储在本地浏览器中</li>
-                                <li>清除浏览器缓存会导致数据丢失</li>
+                                <li>默认数据存储在本地浏览器中</li>
+                                <li>清除浏览器缓存会导致本地数据丢失</li>
                                 <li>可以通过"重置所有数据"按钮清空所有数据</li>
+                                <li>支持GitHub云端存储，可在设置页面配置</li>
+                                <li>配置GitHub后，数据会自动同步到云端</li>
+                                <li>云端存储可以实现跨设备数据同步</li>
                             </ul>
                         </div>
                     </div>
@@ -2120,7 +2166,10 @@
                             <input v-model="githubToken" type="password" placeholder="输入GitHub Token" style="width: 100%; padding: 8px; border: 2px solid #b3d9b3; border-radius: 20px; background: #f9fff9; font-size: 1rem;">
                             <p style="margin-top: 6px; font-size: 0.8rem; color: #666;">Token需要repo权限，仅存储在本地，不会上传到GitHub</p>
                         </div>
-                        <button class="btn" style="width: 100%; background: #91e491;" @click="saveGithubConfig">💾 保存配置</button>
+                        <div class="flex-row" style="gap: 12px; margin-bottom: 12px;">
+                            <button class="btn" style="flex: 1; background: #91e491;" @click="saveGithubConfig">💾 保存配置</button>
+                            <button class="btn" style="flex: 1; background: #e49191;" @click="testGithubConfig">🔍 测试配置</button>
+                        </div>
                     </div>
                 </div>
                 
@@ -2173,7 +2222,7 @@
             const githubRepo = ref(localStorage.getItem('githubRepoName') || '');
             const githubToken = ref(localStorage.getItem('githubToken') || '');
             
-            const saveBasic = () => { store.saveAll(); store.showToast("设置已保存~", 1500); };
+            const saveBasic = () => { store.saveAll(); store.showToast("设置已保存~", 2500); };
             
             // GitHub配置相关方法
             const toggleGithubConfig = () => {
@@ -2184,11 +2233,90 @@
                 store.githubRepoOwner = githubOwner.value;
                 store.githubRepoName = githubRepo.value;
                 store.githubToken = githubToken.value;
-                store.showToast('GitHub配置保存成功！', 1500);
+                store.showToast('GitHub配置保存成功！', 2500);
+            };
+            
+            // 测试GitHub配置
+            const testGithubConfig = async () => {
+                if (!githubOwner.value || !githubRepo.value || !githubToken.value) {
+                    store.showToast('请先填写完整的GitHub配置', 2500);
+                    return;
+                }
+                
+                try {
+                    store.showToast('正在测试GitHub配置...', 2500);
+                    
+                    // 测试仓库访问权限
+                    const url = `https://api.github.com/repos/${githubOwner.value}/${githubRepo.value}`;
+                    const response = await fetch(url, {
+                        headers: {
+                            'Authorization': `token ${githubToken.value}`,
+                            'Accept': 'application/vnd.github.v3+json'
+                        }
+                    });
+                    
+                    if (!response.ok) {
+                        const errorData = await response.json().catch(() => ({}));
+                        throw new Error(`仓库访问失败: ${response.status} ${response.statusText}\n${errorData.message || ''}`);
+                    }
+                    
+                    // 测试文件操作权限
+                    const testContent = store.utf8ToBase64(JSON.stringify({ test: 'test' }));
+                    const testUrl = `https://api.github.com/repos/${githubOwner.value}/${githubRepo.value}/contents/test-config.json`;
+                    
+                    // 检查文件是否存在，获取sha值
+                    let sha = '';
+                    try {
+                        const checkResponse = await fetch(testUrl, {
+                            headers: {
+                                'Authorization': `token ${githubToken.value}`,
+                                'Accept': 'application/vnd.github.v3+json'
+                            }
+                        });
+                        
+                        if (checkResponse.ok) {
+                            const checkData = await checkResponse.json();
+                            sha = checkData.sha;
+                            console.log('文件已存在，使用sha:', sha);
+                        } else if (checkResponse.status === 404) {
+                            console.log('文件不存在，将创建新文件');
+                        } else {
+                            throw new Error(`检查文件状态失败: ${checkResponse.status} ${checkResponse.statusText}`);
+                        }
+                    } catch (checkError) {
+                        console.warn('检查文件状态时出错:', checkError);
+                        // 继续执行，尝试创建文件
+                    }
+                    
+                    const testResponse = await fetch(testUrl, {
+                        method: 'PUT',
+                        headers: {
+                            'Authorization': `token ${githubToken.value}`,
+                            'Accept': 'application/vnd.github.v3+json',
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            message: '测试GitHub配置',
+                            content: testContent,
+                            sha: sha
+                        })
+                    });
+                    
+                    if (!testResponse.ok) {
+                        const errorData = await testResponse.json().catch(() => ({}));
+                        throw new Error(`文件操作失败: ${testResponse.status} ${testResponse.statusText}\n${errorData.message || ''}`);
+                    }
+                    
+                    // 测试成功
+                    store.showToast('GitHub配置测试成功！', 2500);
+                } catch (error) {
+                    console.error('GitHub配置测试失败:', error);
+                    store.showToast(`测试失败: ${error.message}`, 3000);
+                }
             };
             
             const addHabit = () => {
-                if (!newHabitName.value.trim()) return store.showToast("请输入习惯名称", 1500);
+                if (!newHabitName.value.trim()) return store.showToast("请输入习惯名称", 2500);
                 const newId = Date.now() + "_" + Math.random();
                 habits.value.push({ id: newId, name: newHabitName.value.trim(), icon: newHabitIcon.value });
                 const today = store.getTodayStr();
@@ -2196,10 +2324,10 @@
                 store.dailyRecords.value[today][newId] = false;
                 store.saveAll();
                 newHabitName.value = "";
-                store.showToast("✨ 新习惯加入魔法清单", 1500);
+                store.showToast("✨ 新习惯加入魔法清单", 2500);
             };
             const deleteHabit = (id) => {
-                if (habits.value.length <= 1) return store.showToast("至少保留一个习惯哟", 1500);
+                if (habits.value.length <= 1) return store.showToast("至少保留一个习惯哟", 2500);
                 const habit = habits.value.find(h => h.id === id);
                 const habitName = habit ? habit.name : "习惯";
                 if (confirm(`确定要删除 ${habitName} 吗？`)) {
@@ -2373,7 +2501,7 @@
                 showRules.value = !showRules.value;
             };
             
-            return { habits, rewards, childName, pageTitle, dailyGoal, newHabitName, newHabitIcon, newRewardName, newRewardCost, newRewardIcon, iconList, saveBasic, addHabit, deleteHabit, addReward, deleteReward, resetData, customReason, customAmount, addCustomStar, showCustom, showHabits, showRewards, showRules, showSync, showGithubConfig, githubOwner, githubRepo, githubToken, toggleCustom, toggleHabits, toggleRewards, toggleRules, toggleSync, toggleGithubConfig, saveGithubConfig, exportData, importData };
+            return { habits, rewards, childName, pageTitle, dailyGoal, newHabitName, newHabitIcon, newRewardName, newRewardCost, newRewardIcon, iconList, saveBasic, addHabit, deleteHabit, addReward, deleteReward, resetData, customReason, customAmount, addCustomStar, showCustom, showHabits, showRewards, showRules, showSync, showGithubConfig, githubOwner, githubRepo, githubToken, toggleCustom, toggleHabits, toggleRewards, toggleRules, toggleSync, toggleGithubConfig, saveGithubConfig, testGithubConfig, exportData, importData };
         }
     };
     
