@@ -756,23 +756,111 @@
             let day = this.dailyRecords.value[dateStr] || {};
             return Object.values(day).filter(v => v === true).length;
         },
-        saveAll() {
+        // GitHub数据存储相关
+        get githubRepoOwner() {
+            return localStorage.getItem('githubRepoOwner') || 'your-github-username';
+        },
+        set githubRepoOwner(value) {
+            localStorage.setItem('githubRepoOwner', value);
+        },
+        get githubRepoName() {
+            return localStorage.getItem('githubRepoName') || 'your-repo-name';
+        },
+        set githubRepoName(value) {
+            localStorage.setItem('githubRepoName', value);
+        },
+        get githubToken() {
+            return localStorage.getItem('githubToken') || '';
+        },
+        set githubToken(value) {
+            localStorage.setItem('githubToken', value);
+        },
+        githubDataPath: 'data.json',
+        
+        // 保存所有数据
+        async saveAll() {
             try {
-                localStorage.setItem('habits', JSON.stringify(this.habits.value));
-                localStorage.setItem('dailyRecords', JSON.stringify(this.dailyRecords.value));
-                localStorage.setItem('starHistory', JSON.stringify(this.starHistory.value));
-                localStorage.setItem('totalSpentStars', this.totalSpentStars.value);
-                localStorage.setItem('rewards', JSON.stringify(this.rewards.value));
-                localStorage.setItem('ownedRewards', JSON.stringify(this.ownedRewards.value));
-                localStorage.setItem('childName', this.childName.value);
-                localStorage.setItem('pageTitle', this.pageTitle.value);
-                localStorage.setItem('dailyGoal', this.dailyGoal.value);
+                // 先保存到localStorage作为备份
+                this.saveToLocalStorage();
+                
+                // 再尝试保存到GitHub
+                if (this.githubToken) {
+                    await this.saveToGitHub();
+                } else {
+                    console.log('GitHub Token未设置，仅保存到localStorage');
+                }
             } catch (error) {
                 console.error('保存数据失败:', error);
-                this.showToast('数据保存失败，请检查存储空间', 2000);
+                this.showToast('数据保存失败，请检查GitHub Token设置', 2000);
             }
         },
+        
+        // 加载所有数据
         loadAll() {
+            try {
+                // 先尝试从GitHub加载数据
+                this.loadFromGitHub().catch(() => {
+                    // 如果GitHub加载失败，尝试从localStorage加载
+                    this.loadFromLocalStorage();
+                });
+            } catch (error) {
+                console.error('加载数据失败:', error);
+                this.showToast('数据加载失败，使用默认数据', 2000);
+                // 重置为默认数据
+                this.resetToDefaultData();
+            }
+        },
+        
+        // 从GitHub加载数据
+        async loadFromGitHub() {
+            if (!this.githubToken) {
+                console.log('GitHub Token未设置，使用localStorage');
+                return Promise.reject('GitHub Token未设置');
+            }
+            
+            try {
+                const url = `https://api.github.com/repos/${this.githubRepoOwner}/${this.githubRepoName}/contents/${this.githubDataPath}`;
+                const response = await fetch(url, {
+                    headers: {
+                        'Authorization': `token ${this.githubToken}`,
+                        'Accept': 'application/vnd.github.v3+json'
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error('GitHub API请求失败');
+                }
+                
+                const data = await response.json();
+                const content = atob(data.content);
+                const jsonData = JSON.parse(content);
+                
+                // 加载数据
+                this.habits.value = jsonData.habits || [];
+                this.rewards.value = jsonData.rewards || [];
+                this.childName.value = jsonData.childName || "小公主";
+                this.pageTitle.value = jsonData.pageTitle || "习惯打卡";
+                this.dailyGoal.value = jsonData.dailyGoal || 3;
+                this.dailyRecords.value = jsonData.dailyRecords || {};
+                this.starHistory.value = jsonData.starHistory || [];
+                this.ownedRewards.value = jsonData.ownedRewards || [];
+                this.totalSpentStars.value = jsonData.totalSpentStars || 0;
+                
+                // 处理礼物历史记录
+                if (jsonData.rewardHistory) {
+                    localStorage.setItem('rewardHistory', JSON.stringify(jsonData.rewardHistory));
+                }
+                
+                console.log('从GitHub加载数据成功');
+                this.showToast('从云端加载数据成功', 1500);
+            } catch (error) {
+                console.error('从GitHub加载数据失败:', error);
+                throw error;
+            }
+        },
+        
+        // 从localStorage加载数据
+        loadFromLocalStorage() {
             try {
                 const h = localStorage.getItem('habits');
                 if (h) this.habits.value = JSON.parse(h);
@@ -819,29 +907,119 @@
                     }
                 }
                 if (changed) this.saveAll();
+                
+                console.log('从localStorage加载数据成功');
             } catch (error) {
-                console.error('加载数据失败:', error);
-                this.showToast('数据加载失败，使用默认数据', 2000);
-                // 重置为默认数据
-                this.habits.value = [
-                    { id: "h1", name: "刷牙洗脸", icon: "🪥" },
-                    { id: "h2", name: "整理玩具", icon: "🧸" },
-                    { id: "h3", name: "阅读绘本", icon: "📚" },
-                    { id: "h4", name: "喝水牛奶", icon: "🥛" }
-                ];
-                this.dailyRecords.value = {};
-                this.totalSpentStars.value = 0;
-                this.rewards.value = [
-                    { id: "r1", name: "公主皇冠", icon: "👑", cost: 10 },
-                    { id: "r2", name: "魔法独角兽", icon: "🦄", cost: 20 },
-                    { id: "r3", name: "彩虹翅膀", icon: "🌈", cost: 15 },
-                    { id: "r4", name: "星星贴纸", icon: "⭐", cost: 5 }
-                ];
-                this.ownedRewards.value = [];
-                this.childName.value = "小公主";
-                this.pageTitle.value = "星光魔法城堡";
-                this.dailyGoal.value = 3;
-                this.saveAll();
+                console.error('从localStorage加载数据失败:', error);
+                this.resetToDefaultData();
+            }
+        },
+        
+        // 重置为默认数据
+        resetToDefaultData() {
+            this.habits.value = [
+                { id: "h1", name: "刷牙洗脸", icon: "🪥" },
+                { id: "h2", name: "整理玩具", icon: "🧸" },
+                { id: "h3", name: "阅读绘本", icon: "📚" },
+                { id: "h4", name: "喝水牛奶", icon: "🥛" }
+            ];
+            this.rewards.value = [
+                { id: "r1", name: "公主皇冠", icon: "👑", cost: 10 },
+                { id: "r2", name: "魔法独角兽", icon: "🦄", cost: 20 },
+                { id: "r3", name: "彩虹翅膀", icon: "🌈", cost: 15 },
+                { id: "r4", name: "星星贴纸", icon: "⭐", cost: 5 }
+            ];
+            this.childName.value = "小公主";
+            this.pageTitle.value = "星光魔法城堡";
+            this.dailyGoal.value = 3;
+            this.dailyRecords.value = {};
+            this.starHistory.value = [];
+            this.ownedRewards.value = [];
+            this.totalSpentStars.value = 0;
+            localStorage.setItem('rewardHistory', JSON.stringify([]));
+            
+            const today = this.getTodayStr();
+            this.dailyRecords.value[today] = {};
+            for (let h of this.habits.value) {
+                this.dailyRecords.value[today][h.id] = false;
+            }
+        },
+        
+        // 保存到GitHub
+        async saveToGitHub() {
+            try {
+                // 收集所有数据
+                const allData = {
+                    habits: this.habits.value,
+                    rewards: this.rewards.value,
+                    childName: this.childName.value,
+                    pageTitle: this.pageTitle.value,
+                    dailyGoal: this.dailyGoal.value,
+                    dailyRecords: this.dailyRecords.value,
+                    starHistory: this.starHistory.value,
+                    ownedRewards: this.ownedRewards.value,
+                    totalSpentStars: this.totalSpentStars.value,
+                    rewardHistory: JSON.parse(localStorage.getItem('rewardHistory') || '[]')
+                };
+                
+                // 获取当前文件的sha值
+                const url = `https://api.github.com/repos/${this.githubRepoOwner}/${this.githubRepoName}/contents/${this.githubDataPath}`;
+                const response = await fetch(url, {
+                    headers: {
+                        'Authorization': `token ${this.githubToken}`,
+                        'Accept': 'application/vnd.github.v3+json'
+                    }
+                });
+                
+                let sha = '';
+                if (response.ok) {
+                    const data = await response.json();
+                    sha = data.sha;
+                }
+                
+                // 更新文件
+                const updateResponse = await fetch(url, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `token ${this.githubToken}`,
+                        'Accept': 'application/vnd.github.v3+json',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        message: '更新习惯追踪数据',
+                        content: btoa(JSON.stringify(allData, null, 2)),
+                        sha: sha
+                    })
+                });
+                
+                if (!updateResponse.ok) {
+                    throw new Error('GitHub API更新失败');
+                }
+                
+                console.log('保存到GitHub成功');
+                this.showToast('数据已同步到云端', 1500);
+            } catch (error) {
+                console.error('保存到GitHub失败:', error);
+                throw error;
+            }
+        },
+        
+        // 保存到localStorage
+        saveToLocalStorage() {
+            try {
+                localStorage.setItem('habits', JSON.stringify(this.habits.value));
+                localStorage.setItem('dailyRecords', JSON.stringify(this.dailyRecords.value));
+                localStorage.setItem('starHistory', JSON.stringify(this.starHistory.value));
+                localStorage.setItem('totalSpentStars', this.totalSpentStars.value);
+                localStorage.setItem('rewards', JSON.stringify(this.rewards.value));
+                localStorage.setItem('ownedRewards', JSON.stringify(this.ownedRewards.value));
+                localStorage.setItem('childName', this.childName.value);
+                localStorage.setItem('pageTitle', this.pageTitle.value);
+                localStorage.setItem('dailyGoal', this.dailyGoal.value);
+                console.log('保存到localStorage成功');
+            } catch (error) {
+                console.error('保存到localStorage失败:', error);
+                throw error;
             }
         },
         showToast(msg, duration=2000) {
@@ -1922,6 +2100,30 @@
                     </div>
                 </div>
                 
+                <!-- GitHub配置 -->
+                <div class="card" style="margin-top: 16px; border: 2px solid #d6ffd6; background: #f0fff0;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;" @click="toggleGithubConfig">
+                        <h3><i class="fas fa-github"></i> GitHub配置</h3>
+                        <i :class="{ 'fas fa-chevron-down': showGithubConfig, 'fas fa-chevron-up': !showGithubConfig }"></i>
+                    </div>
+                    <div v-if="showGithubConfig">
+                        <div style="margin: 12px 0;">
+                            <label style="display: block; margin-bottom: 6px; font-weight: bold; color: #2c6e2c;">GitHub用户名</label>
+                            <input v-model="githubOwner" type="text" placeholder="输入GitHub用户名" style="width: 100%; padding: 8px; border: 2px solid #b3d9b3; border-radius: 20px; background: #f9fff9; font-size: 1rem;">
+                        </div>
+                        <div style="margin: 12px 0;">
+                            <label style="display: block; margin-bottom: 6px; font-weight: bold; color: #2c6e2c;">仓库名称</label>
+                            <input v-model="githubRepo" type="text" placeholder="输入仓库名称" style="width: 100%; padding: 8px; border: 2px solid #b3d9b3; border-radius: 20px; background: #f9fff9; font-size: 1rem;">
+                        </div>
+                        <div style="margin: 12px 0;">
+                            <label style="display: block; margin-bottom: 6px; font-weight: bold; color: #2c6e2c;">Personal Access Token</label>
+                            <input v-model="githubToken" type="password" placeholder="输入GitHub Token" style="width: 100%; padding: 8px; border: 2px solid #b3d9b3; border-radius: 20px; background: #f9fff9; font-size: 1rem;">
+                            <p style="margin-top: 6px; font-size: 0.8rem; color: #666;">Token需要repo权限，仅存储在本地，不会上传到GitHub</p>
+                        </div>
+                        <button class="btn" style="width: 100%; background: #91e491;" @click="saveGithubConfig">💾 保存配置</button>
+                    </div>
+                </div>
+                
                 <!-- 数据管理 -->
                 <div class="card" style="margin-top: 16px; border: 2px solid #d6eaff; background: #f0f8ff;">
                     <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;" @click="toggleSync">
@@ -1964,8 +2166,27 @@
             const showRewards = ref(true); // 默认展开礼物管理
             const showRules = ref(false); // 默认展开规则说明
             const showSync = ref(false); // 数据同步面板
+            const showGithubConfig = ref(false); // GitHub配置面板
+            
+            // GitHub配置相关
+            const githubOwner = ref(localStorage.getItem('githubRepoOwner') || '');
+            const githubRepo = ref(localStorage.getItem('githubRepoName') || '');
+            const githubToken = ref(localStorage.getItem('githubToken') || '');
             
             const saveBasic = () => { store.saveAll(); store.showToast("设置已保存~", 1500); };
+            
+            // GitHub配置相关方法
+            const toggleGithubConfig = () => {
+                showGithubConfig.value = !showGithubConfig.value;
+            };
+            
+            const saveGithubConfig = () => {
+                store.githubRepoOwner = githubOwner.value;
+                store.githubRepoName = githubRepo.value;
+                store.githubToken = githubToken.value;
+                store.showToast('GitHub配置保存成功！', 1500);
+            };
+            
             const addHabit = () => {
                 if (!newHabitName.value.trim()) return store.showToast("请输入习惯名称", 1500);
                 const newId = Date.now() + "_" + Math.random();
@@ -2152,7 +2373,7 @@
                 showRules.value = !showRules.value;
             };
             
-            return { habits, rewards, childName, pageTitle, dailyGoal, newHabitName, newHabitIcon, newRewardName, newRewardCost, newRewardIcon, iconList, saveBasic, addHabit, deleteHabit, addReward, deleteReward, resetData, customReason, customAmount, addCustomStar, showCustom, showHabits, showRewards, showRules, showSync, toggleCustom, toggleHabits, toggleRewards, toggleRules, toggleSync, exportData, importData };
+            return { habits, rewards, childName, pageTitle, dailyGoal, newHabitName, newHabitIcon, newRewardName, newRewardCost, newRewardIcon, iconList, saveBasic, addHabit, deleteHabit, addReward, deleteReward, resetData, customReason, customAmount, addCustomStar, showCustom, showHabits, showRewards, showRules, showSync, showGithubConfig, githubOwner, githubRepo, githubToken, toggleCustom, toggleHabits, toggleRewards, toggleRules, toggleSync, toggleGithubConfig, saveGithubConfig, exportData, importData };
         }
     };
     
