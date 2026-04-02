@@ -1,0 +1,2217 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>习惯养成魔法</title>
+    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://unpkg.com/vue-router@4/dist/vue-router.global.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+        body {
+            background: linear-gradient(145deg, #f9eef7 0%, #ffe4f0 100%);
+            font-family: 'Quicksand', 'Segoe UI', sans-serif;
+            padding: 16px 12px 30px;
+            min-height: 100vh;
+        }
+        .app-container {
+            max-width: 500px;
+            margin: 0 auto;
+            background: rgba(255, 250, 245, 0.95);
+            backdrop-filter: blur(3px);
+            border-radius: 56px;
+            box-shadow: 0 20px 35px rgba(245, 145, 180, 0.25);
+            overflow: hidden;
+            padding: 20px 18px 30px;
+        }
+        /* 醒目导航按钮 */
+        .nav-bar {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+        .nav-btn {
+            flex: 1;
+            background: #ffe0ea;
+            border: none;
+            border-radius: 50px;
+            padding: 12px 0;
+            font-size: 0.9rem;
+            font-weight: bold;
+            color: #b34e6e;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+        .nav-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(245, 145, 180, 0.3);
+        }
+        .nav-btn i {
+            font-size: 1.1rem;
+        }
+        .nav-btn.active {
+            background: #ffb7cf;
+            color: white;
+            box-shadow: 0 6px 12px #e6a0bb;
+            transform: scale(0.98);
+        }
+        /* 卡片通用 */
+        .card {
+            background: white;
+            border-radius: 48px;
+            padding: 18px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 18px #fbc4d9;
+            border: 1px solid #ffe2ed;
+            transition: all 0.3s ease;
+        }
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px #fbc4d9;
+        }
+        /* 星星展示区 - 动态显示实际星星数 */
+        .star-area {
+            background: linear-gradient(135deg, #fff0f5, #ffe4f0);
+            border-radius: 60px;
+            padding: 16px;
+            margin-bottom: 20px;
+            text-align: center;
+            box-shadow: 0 6px 12px #f5b0cc;
+        }
+        .stars-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 6px;
+            margin-bottom: 8px;
+        }
+        .star-icon {
+            font-size: 1.8rem;
+            color: #ffb347;
+            text-shadow: 0 2px 2px rgba(0,0,0,0.1);
+        }
+        .star-extra {
+            font-size: 1.2rem;
+            font-weight: bold;
+            background: #ffe6f0;
+            padding: 4px 12px;
+            border-radius: 30px;
+            color: #b45a7a;
+        }
+        /* 目标卡片 - 保留小女孩图标，删除文字 */
+        .goal-card {
+            background: #fff0f8;
+            border-radius: 48px;
+            padding: 16px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        .girl-icon {
+            font-size: 3.2rem;
+            background: #cbd5ff;
+            border-radius: 50%;
+            width: 70px;
+            height: 70px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .goal-info {
+            flex: 1;
+        }
+        .goal-text {
+            font-weight: 600;
+            color: #b45a7a;
+            margin-bottom: 6px;
+        }
+        .goal-progress {
+            background: #ffe2ec;
+            border-radius: 30px;
+            height: 12px;
+            margin: 8px 0;
+            overflow: hidden;
+        }
+        .goal-fill {
+            height: 12px;
+            border-radius: 30px;
+            transition: width 0.2s;
+        }
+        .goal-fill.under { background: #f9a8a8; }
+        .goal-fill.near { background: #ffb347; }
+        .goal-fill.meet { background: #6fcf97; }
+        .goal-fill.over { background: #a55cff; }
+        /* 习惯列表 */
+        .habit-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #fff9fc;
+            border-radius: 80px;
+            padding: 6px 16px 6px 12px;
+            margin-bottom: 12px;
+        }
+        .habit-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+        .habit-icon {
+            font-size: 2rem;
+            background: #fff0f5;
+            width: 52px;
+            height: 52px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+        }
+        .check-btn {
+            background: #fec7da;
+            width: 54px;
+            height: 54px;
+            border-radius: 50%;
+            border: none;
+            font-size: 1.7rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px #d98eae;
+        }
+        .check-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 10px #d98eae;
+        }
+        .check-btn.completed {
+            background: #c8e6b5;
+            color: #4f6b2c;
+            transform: scale(0.96);
+        }
+        /* 统计页 */
+        .stat-period {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 20px;
+            justify-content: center;
+        }
+        .period-btn {
+            background: #ffeef4;
+            border: none;
+            padding: 6px 14px;
+            border-radius: 40px;
+            font-weight: 600;
+            color: #b34e6e;
+            cursor: pointer;
+        }
+        .period-btn.active {
+            background: #ffb7cf;
+            color: white;
+        }
+        /* 商店 */
+        .reward-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 12px;
+        }
+        .reward-card {
+            background: #fffaf0;
+            border-radius: 40px;
+            padding: 12px;
+            flex: 1;
+            min-width: 100px;
+            text-align: center;
+            border: 1px solid #ffcddf;
+        }
+        /* 设置 */
+        .setting-group {
+            margin-bottom: 20px;
+        }
+        .icon-selector {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 8px;
+        }
+        .icon-option {
+            font-size: 1.8rem;
+            background: #fff0f5;
+            padding: 6px;
+            border-radius: 50%;
+            cursor: pointer;
+            width: 48px;
+            text-align: center;
+        }
+        .icon-option.selected {
+            background: #ffb7cf;
+            box-shadow: 0 0 0 2px white, 0 0 0 4px #ff8ab5;
+        }
+        input {
+            border-radius: 60px;
+            border: 1px solid #ffb7cf;
+            padding: 10px 16px;
+            font-family: inherit;
+            width: 100%;
+            margin: 6px 0;
+        }
+        .btn {
+            background: #ffb7cf;
+            border: none;
+            border-radius: 60px;
+            padding: 8px 18px;
+            font-weight: bold;
+            margin: 4px;
+            cursor: pointer;
+        }
+        .toast {
+            position: fixed;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #ff80a5;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 40px;
+            z-index: 200;
+            font-weight: bold;
+        }
+        @keyframes bounce {
+            0% { transform: scale(1); opacity: 1; }
+            100% { transform: scale(1.5); opacity: 0; }
+        }
+        .star-effect {
+            position: fixed;
+            font-size: 2rem;
+            pointer-events: none;
+            animation: bounce 0.6s ease-out forwards;
+            z-index: 300;
+        }
+        .princess-name-header {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #bc6f8d;
+            text-align: center;
+            margin-bottom: 12px;
+            background: #fff0ffaa;
+            border-radius: 60px;
+            padding: 8px;
+        }
+        h2 {
+            color: #b34e6e;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .flex-row {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .history-list {
+            margin-top: 12px;
+        }
+        .history-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            background: #fff9fc;
+            border-radius: 30px;
+            margin-bottom: 8px;
+            border: 1px solid #ffe2ed;
+        }
+        .history-date {
+            font-size: 0.9rem;
+            color: #b45a7a;
+        }
+        .history-content {
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+        .achievement-list {
+            margin-top: 12px;
+        }
+        .achievement-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 12px;
+            background: #fff9fc;
+            border-radius: 30px;
+            margin-bottom: 8px;
+            border: 1px solid #ffe2ed;
+        }
+        .achievement-icon {
+            font-size: 1.2rem;
+        }
+        .achievement-text {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #b45a7a;
+        }
+        @media (max-width: 320px) {
+            .app-container {
+                padding: 16px 12px 20px;
+            }
+            .nav-btn {
+                padding: 6px 0;
+                font-size: 0.65rem;
+            }
+            .nav-btn i {
+                font-size: 0.9rem;
+            }
+            .star-icon {
+                font-size: 1.2rem;
+            }
+            .girl-icon {
+                font-size: 2rem;
+                width: 45px;
+                height: 45px;
+            }
+            .habit-icon {
+                font-size: 1.6rem;
+                width: 45px;
+                height: 45px;
+            }
+            .check-btn {
+                width: 45px;
+                height: 45px;
+                font-size: 1.4rem;
+            }
+            .princess-name-header {
+                font-size: 1.2rem;
+                padding: 6px;
+            }
+        }
+        @media (max-width: 480px) {
+            .nav-btn {
+                padding: 8px 0;
+                font-size: 0.75rem;
+            }
+            .nav-btn i {
+                font-size: 1rem;
+            }
+            .star-icon {
+                font-size: 1.4rem;
+            }
+            .girl-icon {
+                font-size: 2.5rem;
+                width: 55px;
+                height: 55px;
+            }
+            .habit-icon {
+                font-size: 1.8rem;
+                width: 48px;
+                height: 48px;
+            }
+            .check-btn {
+                width: 48px;
+                height: 48px;
+                font-size: 1.5rem;
+            }
+            .princess-name-header {
+                font-size: 1.3rem;
+                padding: 7px;
+            }
+            .app-container {
+                padding: 18px 14px 25px;
+            }
+        }
+        @media (max-width: 768px) {
+            .app-container {
+                margin: 0 10px;
+            }
+            .reward-grid {
+                gap: 10px;
+            }
+            .reward-card {
+                min-width: 90px;
+                padding: 10px;
+            }
+            .reward-card div:first-child {
+                font-size: 2rem;
+            }
+            .setting-group {
+                margin-bottom: 16px;
+            }
+            input {
+                padding: 8px 14px;
+            }
+            .btn {
+                padding: 6px 16px;
+            }
+        }
+        @media (max-width: 360px) {
+            .nav-bar {
+                gap: 8px;
+            }
+            .nav-btn {
+                font-size: 0.7rem;
+            }
+            .nav-btn i {
+                font-size: 0.9rem;
+            }
+            .princess-name-header {
+                font-size: 1.2rem;
+            }
+            .goal-card {
+                padding: 12px;
+            }
+            .card {
+                padding: 14px;
+            }
+        }
+        /* 平板设备响应式设计 */
+        @media (min-width: 769px) and (max-width: 1024px) {
+            .app-container {
+                max-width: 850px;
+                margin: 0 auto;
+                padding: 35px 30px 45px;
+            }
+            .princess-name-header {
+                font-size: 2rem;
+                padding: 14px;
+                margin-bottom: 25px;
+            }
+            .nav-bar {
+                gap: 25px;
+                margin-bottom: 35px;
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+            .nav-btn {
+                padding: 14px 0;
+                font-size: 1.1rem;
+                min-width: 110px;
+            }
+            .nav-btn i {
+                font-size: 1.5rem;
+                margin-bottom: 8px;
+            }
+            .goal-card {
+                padding: 28px;
+                margin-bottom: 32px;
+            }
+            .girl-icon {
+                font-size: 4.5rem;
+                width: 100px;
+                height: 100px;
+            }
+            .goal-text {
+                font-size: 1.4rem;
+            }
+            .habit-item {
+                padding: 12px 24px 12px 20px;
+                margin-bottom: 18px;
+            }
+            .habit-icon {
+                font-size: 2.6rem;
+                width: 65px;
+                height: 65px;
+            }
+            .check-btn {
+                width: 65px;
+                height: 65px;
+                font-size: 2.2rem;
+            }
+            .achievement-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 24px;
+            }
+            .achievement-card {
+                padding: 24px;
+            }
+            .achievement-card h4 {
+                font-size: 1.3rem;
+            }
+            .achievement-card p {
+                font-size: 1.1rem;
+            }
+            .reward-grid {
+                gap: 20px;
+            }
+            .reward-card {
+                min-width: 130px;
+                padding: 20px;
+            }
+            .reward-card div:first-child {
+                font-size: 3.5rem;
+            }
+            .card {
+                padding: 28px;
+                margin-bottom: 28px;
+            }
+            h2 {
+                font-size: 1.6rem;
+                margin-bottom: 20px;
+            }
+            .stat-period {
+                margin-bottom: 28px;
+            }
+            .period-btn {
+                padding: 10px 22px;
+                font-size: 1.1rem;
+            }
+            .setting-group {
+                margin-bottom: 28px;
+            }
+            input {
+                padding: 14px 24px;
+                font-size: 1.1rem;
+            }
+            .btn {
+                padding: 12px 26px;
+                font-size: 1.1rem;
+            }
+        }
+        /* 桌面设备响应式设计 */
+        @media (min-width: 1025px) {
+            .app-container {
+                max-width: 900px;
+                margin: 0 auto;
+                padding: 40px 30px 50px;
+            }
+            .princess-name-header {
+                font-size: 2rem;
+                padding: 16px;
+                margin-bottom: 20px;
+            }
+            .nav-bar {
+                gap: 24px;
+                margin-bottom: 40px;
+            }
+            .nav-btn {
+                padding: 14px 0;
+                font-size: 1.1rem;
+                min-width: 120px;
+            }
+            .nav-btn i {
+                font-size: 1.6rem;
+                margin-bottom: 8px;
+            }
+            .goal-card {
+                padding: 28px;
+                margin-bottom: 32px;
+            }
+            .girl-icon {
+                font-size: 4.5rem;
+                width: 100px;
+                height: 100px;
+            }
+            .goal-text {
+                font-size: 1.5rem;
+            }
+            .habit-item {
+                padding: 12px 24px 12px 20px;
+                margin-bottom: 18px;
+            }
+            .habit-icon {
+                font-size: 2.6rem;
+                width: 65px;
+                height: 65px;
+            }
+            .check-btn {
+                width: 65px;
+                height: 65px;
+                font-size: 2.2rem;
+            }
+            .achievement-grid {
+                grid-template-columns: repeat(3, 1fr);
+                gap: 24px;
+            }
+            .achievement-card {
+                padding: 24px;
+            }
+            .achievement-card h4 {
+                font-size: 1.3rem;
+            }
+            .achievement-card p {
+                font-size: 1.1rem;
+            }
+            .reward-grid {
+                gap: 20px;
+            }
+            .reward-card {
+                min-width: 140px;
+                padding: 20px;
+            }
+            .reward-card div:first-child {
+                font-size: 3.5rem;
+            }
+            .card {
+                padding: 28px;
+                margin-bottom: 28px;
+            }
+            h2 {
+                font-size: 1.6rem;
+                margin-bottom: 20px;
+            }
+            .stat-period {
+                margin-bottom: 28px;
+            }
+            .period-btn {
+                padding: 10px 22px;
+                font-size: 1.1rem;
+            }
+            .setting-group {
+                margin-bottom: 28px;
+            }
+            input {
+                padding: 14px 24px;
+                font-size: 1.1rem;
+            }
+            .btn {
+                padding: 12px 26px;
+                font-size: 1.1rem;
+            }
+            .toast {
+                padding: 12px 24px;
+                font-size: 1.1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+    const { createApp, ref, computed, onMounted, watch } = Vue;
+    const { createRouter, createWebHashHistory } = VueRouter;
+    
+    // 全局数据
+    const store = {
+        habits: ref([]),
+        dailyRecords: ref({}),
+        starHistory: ref([]),
+        totalSpentStars: ref(0),
+        rewards: ref([]),
+        ownedRewards: ref([]),
+        childName: ref("小公主"),
+        pageTitle: ref("习惯魔法城堡"),
+        dailyGoal: ref(3),
+        toastMsg: ref(""),
+        effects: ref([]),
+        
+        getTodayStr() {
+            const d = new Date();
+            return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+        },
+        getTotalCompletedCount() {
+            // 计算所有获得的星星
+            const gained = this.starHistory.value.filter(item => item.type === 'gain').reduce((total, item) => total + item.amount, 0);
+            // 计算所有失去的星星（不包括兑换礼物）
+            const lost = this.starHistory.value.filter(item => 
+                item.type === 'lose' && !item.reason.includes('兑换礼物')
+            ).reduce((total, item) => total + item.amount, 0);
+            return gained - lost;
+        },
+        getTotalSpentStars() {
+            return this.starHistory.value.filter(item => 
+                item.type === 'lose' && item.reason.includes('兑换礼物')
+            ).reduce((total, item) => total + item.amount, 0);
+        },
+        totalStars: computed(() => store.getTotalCompletedCount() - store.getTotalSpentStars()),
+        calcStreak() {
+            let today = this.getTodayStr();
+            let streak = 0;
+            let check = new Date();
+            while (true) {
+                let y = check.getFullYear();
+                let m = String(check.getMonth()+1).padStart(2,'0');
+                let d = String(check.getDate()).padStart(2,'0');
+                let cur = `${y}-${m}-${d}`;
+                let dayData = this.dailyRecords.value[cur] || {};
+                let completedAny = Object.values(dayData).some(v => v === true);
+                if (completedAny) {
+                    streak++;
+                    check.setDate(check.getDate() - 1);
+                } else {
+                    if (cur === today) break;
+                    else break;
+                }
+                if (streak > 1000) break;
+            }
+            return streak;
+        },
+        getDayCompletedCount(dateStr) {
+            let day = this.dailyRecords.value[dateStr] || {};
+            return Object.values(day).filter(v => v === true).length;
+        },
+        saveAll() {
+            try {
+                localStorage.setItem('habits', JSON.stringify(this.habits.value));
+                localStorage.setItem('dailyRecords', JSON.stringify(this.dailyRecords.value));
+                localStorage.setItem('starHistory', JSON.stringify(this.starHistory.value));
+                localStorage.setItem('totalSpentStars', this.totalSpentStars.value);
+                localStorage.setItem('rewards', JSON.stringify(this.rewards.value));
+                localStorage.setItem('ownedRewards', JSON.stringify(this.ownedRewards.value));
+                localStorage.setItem('childName', this.childName.value);
+                localStorage.setItem('pageTitle', this.pageTitle.value);
+                localStorage.setItem('dailyGoal', this.dailyGoal.value);
+            } catch (error) {
+                console.error('保存数据失败:', error);
+                this.showToast('数据保存失败，请检查存储空间', 2000);
+            }
+        },
+        loadAll() {
+            try {
+                const h = localStorage.getItem('habits');
+                if (h) this.habits.value = JSON.parse(h);
+                else this.habits.value = [
+                    { id: "h1", name: "刷牙洗脸", icon: "🪥" },
+                    { id: "h2", name: "整理玩具", icon: "🧸" },
+                    { id: "h3", name: "阅读绘本", icon: "📚" },
+                    { id: "h4", name: "喝水牛奶", icon: "🥛" }
+                ];
+                const rec = localStorage.getItem('dailyRecords');
+                if (rec) this.dailyRecords.value = JSON.parse(rec);
+                else this.dailyRecords.value = {};
+                
+                const history = localStorage.getItem('starHistory');
+                if (history) this.starHistory.value = JSON.parse(history);
+                else this.starHistory.value = [];
+                
+                const spent = localStorage.getItem('totalSpentStars');
+                if (spent !== null) this.totalSpentStars.value = parseInt(spent);
+                const rew = localStorage.getItem('rewards');
+                if (rew) this.rewards.value = JSON.parse(rew);
+                else this.rewards.value = [
+                    { id: "r1", name: "公主皇冠", icon: "👑", cost: 10 },
+                    { id: "r2", name: "魔法独角兽", icon: "🦄", cost: 20 },
+                    { id: "r3", name: "彩虹翅膀", icon: "🌈", cost: 15 },
+                    { id: "r4", name: "星星贴纸", icon: "⭐", cost: 5 }
+                ];
+                const own = localStorage.getItem('ownedRewards');
+                if (own) this.ownedRewards.value = JSON.parse(own);
+                const name = localStorage.getItem('childName');
+                if (name) this.childName.value = name;
+                const title = localStorage.getItem('pageTitle');
+                if (title) this.pageTitle.value = title;
+                const goal = localStorage.getItem('dailyGoal');
+                if (goal) this.dailyGoal.value = parseInt(goal);
+                
+                const today = this.getTodayStr();
+                if (!this.dailyRecords.value[today]) this.dailyRecords.value[today] = {};
+                let changed = false;
+                for (let h of this.habits.value) {
+                    if (this.dailyRecords.value[today][h.id] === undefined) {
+                        this.dailyRecords.value[today][h.id] = false;
+                        changed = true;
+                    }
+                }
+                if (changed) this.saveAll();
+            } catch (error) {
+                console.error('加载数据失败:', error);
+                this.showToast('数据加载失败，使用默认数据', 2000);
+                // 重置为默认数据
+                this.habits.value = [
+                    { id: "h1", name: "刷牙洗脸", icon: "🪥" },
+                    { id: "h2", name: "整理玩具", icon: "🧸" },
+                    { id: "h3", name: "阅读绘本", icon: "📚" },
+                    { id: "h4", name: "喝水牛奶", icon: "🥛" }
+                ];
+                this.dailyRecords.value = {};
+                this.totalSpentStars.value = 0;
+                this.rewards.value = [
+                    { id: "r1", name: "公主皇冠", icon: "👑", cost: 10 },
+                    { id: "r2", name: "魔法独角兽", icon: "🦄", cost: 20 },
+                    { id: "r3", name: "彩虹翅膀", icon: "🌈", cost: 15 },
+                    { id: "r4", name: "星星贴纸", icon: "⭐", cost: 5 }
+                ];
+                this.ownedRewards.value = [];
+                this.childName.value = "小公主";
+                this.pageTitle.value = "星光魔法城堡";
+                this.dailyGoal.value = 3;
+                this.saveAll();
+            }
+        },
+        showToast(msg, duration=2000) {
+            this.toastMsg.value = msg;
+            setTimeout(() => { this.toastMsg.value = ""; }, duration);
+        },
+        addEffect(x, y, emoji = "⭐") {
+            this.effects.value.push({ x, y, emoji });
+            setTimeout(() => { this.effects.value.shift(); }, 600);
+        }
+    };
+    
+    // 主页组件
+    const HomePage = {
+        template: `
+            <div>
+                <!-- 动态星星展示：只显示当天获得的星星数量 -->
+                <div class="star-area">
+                    <div class="stars-container">
+                        <span v-for="i in todayStarCount" :key="i" class="star-icon">
+                            <i class="fas fa-star"></i>
+                        </span>
+                        <span v-if="todayExtraStars > 0" class="star-extra">+{{ todayExtraStars }}</span>
+                    </div>
+                    <div style="margin-top: 8px; font-size: 1rem; color: #b45a7a;">
+                        今日获得星星: {{ todayStarCount + todayExtraStars }}
+                    </div>
+                </div>
+                <!-- 目标卡片：保留小女孩图标，删除文字 -->
+                <div class="goal-card">
+                    <div class="girl-icon">👸</div>
+                    <div class="goal-info">
+                        <div class="goal-text">🎯 今日目标: 完成 {{ dailyGoal }} 个习惯</div>
+                        <div class="goal-progress">
+                            <div class="goal-fill" :class="progressClass" :style="{ width: progressPercent + '%' }"></div>
+                        </div>
+                        <div>已完成 {{ todayCompletedCount }} / {{ dailyGoal }}</div>
+                        <div v-if="todayCompletedCount >= dailyGoal" style="color:#2c6e2c; margin-top: 6px;">🎉 目标达成！继续获得更多星星 🎉</div>
+                        <div v-if="todayCompletedCount > dailyGoal" style="color:#a55cff;">✨ 太厉害了！超出目标 {{ todayCompletedCount - dailyGoal }} 个 ✨</div>
+                    </div>
+                </div>
+                <div class="card">
+                    <h2><i class="fas fa-clipboard-list"></i> 今日魔法习惯</h2>
+                    <div v-for="habit in habits" :key="habit.id" class="habit-item">
+                        <div class="habit-left">
+                            <div class="habit-icon">{{ habit.icon }}</div>
+                            <div>{{ habit.name }}</div>
+                        </div>
+                        <button class="check-btn" :class="{ completed: isCompleted(habit.id) }" @click="toggleHabit(habit.id)">
+                            <i v-if="isCompleted(habit.id)" class="fas fa-check-circle"></i>
+                            <i v-else class="far fa-circle"></i>
+                        </button>
+                    </div>
+                    <div style="margin-top: 12px; text-align:center; color:#b45a7a;">
+                        🔥 连续打卡 {{ streakDays }} 天
+                    </div>
+                </div>
+            </div>
+        `,
+        setup() {
+            const habits = store.habits;
+            const dailyRecords = store.dailyRecords;
+            const dailyGoal = store.dailyGoal;
+            const totalStars = store.totalStars;
+            const streakDays = computed(() => store.calcStreak());
+            const todayStr = store.getTodayStr();
+            const todayCompletedCount = computed(() => {
+                const day = dailyRecords.value[todayStr] || {};
+                return Object.values(day).filter(v => v === true).length;
+            });
+            const progressPercent = computed(() => {
+                let percent = (todayCompletedCount.value / dailyGoal.value) * 100;
+                return Math.min(percent, 100);
+            });
+            const progressClass = computed(() => {
+                let completed = todayCompletedCount.value;
+                let goal = dailyGoal.value;
+                if (completed > goal) return 'over';
+                if (completed === goal) return 'meet';
+                if (completed === goal - 1) return 'near';
+                return 'under';
+            });
+            const refreshKey = ref(0);
+            // 星星显示：只显示当天获得的星星数量，最多显示30个，超出部分用 +N 显示
+            const todayStarCount = computed(() => {
+                refreshKey.value;
+                const today = store.getTodayStr();
+                const history = localStorage.getItem('starHistory');
+                if (history) {
+                    const starHistory = JSON.parse(history);
+                    const todayGainedStars = starHistory.filter(item => 
+                        item.date === today && item.type === 'gain'
+                    ).reduce((total, item) => total + item.amount, 0);
+                    const todayLostStars = starHistory.filter(item => 
+                        item.date === today && 
+                        item.type === 'lose' && 
+                        (item.reason.includes('取消习惯') || item.reason.includes('额外奖励取消'))
+                    ).reduce((total, item) => total + item.amount, 0);
+                    const todayStars = Math.max(0, todayGainedStars - todayLostStars);
+                    return Math.min(todayStars, 30);
+                }
+                return 0;
+            });
+            const todayExtraStars = computed(() => {
+                refreshKey.value;
+                const today = store.getTodayStr();
+                const history = localStorage.getItem('starHistory');
+                if (history) {
+                    const starHistory = JSON.parse(history);
+                    const todayGainedStars = starHistory.filter(item => 
+                        item.date === today && item.type === 'gain'
+                    ).reduce((total, item) => total + item.amount, 0);
+                    const todayLostStars = starHistory.filter(item => 
+                        item.date === today && 
+                        item.type === 'lose' && 
+                        (item.reason.includes('取消习惯') || item.reason.includes('额外奖励取消'))
+                    ).reduce((total, item) => total + item.amount, 0);
+                    const todayStars = Math.max(0, todayGainedStars - todayLostStars);
+                    return Math.max(0, todayStars - 30);
+                }
+                return 0;
+            });
+            
+            const isCompleted = (habitId) => {
+                return (dailyRecords.value[todayStr]?.[habitId] === true);
+            };
+            
+            const hasTodayExtraBonus = () => {
+                const today = store.getTodayStr();
+                const todayItems = store.starHistory.value.filter(item => item.date === today);
+                
+                // 计算当天获得的额外奖励数量
+                const gainedBonus = todayItems.filter(item => 
+                    item.type === 'gain' && item.reason === '超出目标额外奖励'
+                ).reduce((total, item) => total + item.amount, 0);
+                
+                // 计算当天取消的额外奖励数量
+                const lostBonus = todayItems.filter(item => 
+                    item.type === 'lose' && item.reason === '取消后未超出目标，额外奖励取消'
+                ).reduce((total, item) => total + item.amount, 0);
+                
+                // 如果获得的比取消的多，说明当天还有额外奖励
+                return gainedBonus > lostBonus;
+            };
+            
+            const removeTodayExtraBonus = (starHistory) => {
+                const today = store.getTodayStr();
+                return starHistory.filter(item => 
+                    !(item.date === today && 
+                    item.type === 'gain' && 
+                    item.reason === '超出目标额外奖励')
+                );
+            };
+            
+            const toggleHabit = (habitId) => {
+                const habit = habits.value.find(h => h.id === habitId);
+                const habitName = habit ? habit.name : "习惯";
+                const today = store.getTodayStr();
+                if (!dailyRecords.value[today]) dailyRecords.value[today] = {};
+                const newVal = !dailyRecords.value[today][habitId];
+                
+                dailyRecords.value[today][habitId] = newVal;
+                store.dailyRecords.value = { ...store.dailyRecords.value };
+                
+                const history = localStorage.getItem('starHistory');
+                let starHistory = history ? JSON.parse(history) : [];
+                
+                if (newVal) {
+                    const completedCount = Object.values(dailyRecords.value[today]).filter(v => v === true).length;
+                    
+                    if (completedCount > dailyGoal.value && !hasTodayExtraBonus()) {
+                        store.showToast(`🎊 超级厉害！超出目标，额外+1星星 🎊`, 2000);
+                        const x = window.innerWidth / 2;
+                        const y = window.innerHeight - 100;
+                        store.addEffect(x, y, "⭐");
+                        store.addEffect(x+20, y-30, "✨");
+                        store.addEffect(x-20, y-30, "✨");
+                        store.addEffect(x, y-60, "🎊");
+                        
+                        starHistory.unshift({
+                            id: Date.now() + '_' + Math.random(),
+                            date: today,
+                            type: 'gain',
+                            amount: 1,
+                            reason: `完成习惯：${habitName}`
+                        });
+                        
+                        starHistory.unshift({
+                            id: Date.now() + '_' + Math.random(),
+                            date: today,
+                            type: 'gain',
+                            amount: 1,
+                            reason: `超出目标额外奖励`
+                        });
+                    } else {
+                        store.showToast(`🎉 太棒啦！ +1星星 🎉`, 2000);
+                        const x = window.innerWidth / 2;
+                        const y = window.innerHeight - 100;
+                        store.addEffect(x, y, "⭐");
+                        store.addEffect(x+20, y-30, "✨");
+                        
+                        starHistory.unshift({
+                            id: Date.now() + '_' + Math.random(),
+                            date: today,
+                            type: 'gain',
+                            amount: 1,
+                            reason: `完成习惯：${habitName}`
+                        });
+                    }
+                } else {
+                    store.showToast("💪 取消打卡，星星-1", 2000);
+                    
+                    starHistory.unshift({
+                        id: Date.now() + '_' + Math.random(),
+                        date: today,
+                        type: 'lose',
+                        amount: 1,
+                        reason: `取消习惯：${habitName}`
+                    });
+                    
+                    const completedCountAfter = Object.values(dailyRecords.value[today]).filter(v => v === true).length;
+                    if (completedCountAfter <= dailyGoal.value && hasTodayExtraBonus()) {
+                        starHistory.unshift({
+                            id: Date.now() + '_' + Math.random(),
+                            date: today,
+                            type: 'lose',
+                            amount: 1,
+                            reason: `取消后未超出目标，额外奖励取消`
+                        });
+                        store.showToast("⭐ 未达到目标，额外奖励已取消", 2000);
+                    }
+                }
+                
+                localStorage.setItem('starHistory', JSON.stringify(starHistory));
+                store.starHistory.value = starHistory;
+                store.saveAll();
+                
+                store.totalStars.value = store.getTotalCompletedCount() - store.getTotalSpentStars();
+                refreshKey.value++;
+            };
+            return { habits, dailyGoal, totalStars, todayCompletedCount, isCompleted, toggleHabit, streakDays, progressPercent, progressClass, todayStarCount, todayExtraStars, refreshKey };
+        }
+    };
+    
+    // 个人中心页面
+    const ProfilePage = {
+        template: `
+            <div class="card">
+                <h2><i class="fas fa-user-circle"></i> 个人中心</h2>
+                
+                <!-- 星星统计 -->
+                <div class="star-area" style="background: #f8f0ff; border-radius: 10px; padding: 15px; margin-bottom: 16px;">
+                    <div style="font-size: 1.1rem; font-weight: bold; color: #b45a7a; display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 12px;">
+                        <i class="fas fa-star" style="color: #ffb347; font-size: 1.3rem;"></i>
+                        总星星数: {{ totalStars }}
+                    </div>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap; justify-content: center;">
+                        <span style="color: #2c6e2c; background: #e8f5e8; padding: 4px 10px; border-radius: 20px; font-size: 0.9rem; min-width: 120px; text-align: center;">⭐ 总获得: {{ totalEarnedStars }}</span>
+                        <span style="color: #ff9f43; background: #fff3e0; padding: 4px 10px; border-radius: 20px; font-size: 0.9rem; min-width: 120px; text-align: center;">🎊 额外奖励: {{ extraBonusCount }}</span>
+                        <span style="color: #b45a7a; background: #f3e5f5; padding: 4px 10px; border-radius: 20px; font-size: 0.9rem; min-width: 120px; text-align: center;">🎁 已兑换: {{ totalSpentStars }}</span>
+                    </div>
+                </div>
+                
+                <!-- 统计功能 -->
+                <div class="card" style="margin-top: 16px; border: 2px solid #ffd6e8;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;" @click="toggleStats">
+                        <h3><i class="fas fa-chart-simple"></i> 习惯统计</h3>
+                        <i :class="{ 'fas fa-chevron-down': showStats, 'fas fa-chevron-up': !showStats }"></i>
+                    </div>
+                    <div v-if="showStats">
+                        <div class="stat-period">
+                        <button v-for="p in periods" :key="p.key" class="period-btn" :class="{ active: currentPeriod === p.key }" @click="setPeriod(p.key)">{{ p.label }}</button>
+                        <button class="period-btn" :class="{ active: currentPeriod === 'custom' }" @click="toggleCustomPeriod">自定义</button>
+                    </div>
+                    <div v-if="currentPeriod === 'custom'" style="display: flex; gap: 8px; flex-wrap:wrap; margin: 10px 0;">
+                        <input type="date" v-model="customStart" @change="applyCustom"> 至 <input type="date" v-model="customEnd" @change="applyCustom">
+                        <button class="btn" @click="applyCustom">确定</button>
+                    </div>
+                        <canvas id="statsChart" width="400" height="200"></canvas>
+                    </div>
+                </div>
+                
+                <!-- 星星获得统计 -->
+                <div class="card" style="margin-top: 16px; border: 2px solid #ffd6e8;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;" @click="toggleStarStats">
+                        <h3><i class="fas fa-star"></i> 星星获得统计</h3>
+                        <i :class="{ 'fas fa-chevron-down': showStarStats, 'fas fa-chevron-up': !showStarStats }"></i>
+                    </div>
+                    <div v-if="showStarStats">
+                        <div class="stat-period">
+                            <button v-for="p in periods" :key="p.key" class="period-btn" :class="{ active: currentStarPeriod === p.key }" @click="setStarPeriod(p.key)">{{ p.label }}</button>
+                            <button class="period-btn" :class="{ active: currentStarPeriod === 'custom' }" @click="toggleCustomStarPeriod">自定义</button>
+                        </div>
+                        <div v-if="currentStarPeriod === 'custom'" style="display: flex; gap: 8px; flex-wrap:wrap; margin: 10px 0;">
+                            <input type="date" v-model="customStarStart" @change="applyCustomStar"> 至 <input type="date" v-model="customStarEnd" @change="applyCustomStar">
+                            <button class="btn" @click="applyCustomStar">确定</button>
+                        </div>
+                        <canvas id="starStatsChart" width="400" height="200"></canvas>
+                    </div>
+                </div>
+                
+                <!-- 个人成就 -->
+                <div class="card" style="margin-top: 16px; border: 2px solid #d6e8ff; background: #f9fcff;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;" @click="toggleAchievements">
+                        <h3><i class="fas fa-trophy"></i> 个人成就</h3>
+                        <i :class="{ 'fas fa-chevron-down': showAchievements, 'fas fa-chevron-up': !showAchievements }"></i>
+                    </div>
+                    <div v-if="showAchievements">
+                        <div class="achievement-grid" style="padding: 15px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; align-items: start;">
+                            <!-- 连续打卡成就 -->
+                            <div class="achievement-card" style="background: linear-gradient(135deg, #f8f0ff 0%, #e8d6ff 100%); border: 1px solid #a29bfe; border-radius: 12px; padding: 12px; text-align: center; transform: rotate(-1deg); box-shadow: 3px 3px 8px rgba(0,0,0,0.1);">
+                                <div style="font-size: 1.5rem; margin-bottom: 8px;">🔥</div>
+                                <h4 style="margin: 0 0 4px 0; color: #6c5ce7; font-size: 1rem;">坚持小英雄</h4>
+                                <p style="margin: 0; color: #666; font-size: 0.9rem;">连续打卡 <strong>{{ streakDays }}</strong> 天</p>
+                            </div>
+                            
+                            <!-- 礼物兑换成就 -->
+                            <div class="achievement-card" style="background: linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 100%); border: 1px solid #4caf50; border-radius: 12px 10px 12px 10px; padding: 12px; text-align: center; transform: rotate(1deg); box-shadow: 3px 3px 8px rgba(0,0,0,0.1);">
+                                <div style="font-size: 1.5rem; margin-bottom: 8px;">🎁</div>
+                                <h4 style="margin: 0 0 4px 0; color: #2e7d32; font-size: 1rem;">礼物收藏家</h4>
+                                <p style="margin: 0; color: #666; font-size: 0.9rem;">兑换 <strong>{{ totalRedeemedRewards }}</strong> 个礼物</p>
+                            </div>
+                            
+                            <!-- 打卡次数成就 -->
+                            <div class="achievement-card" style="background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%); border: 1px solid #2196f3; border-radius: 10px; padding: 12px; text-align: center; transform: rotate(0.5deg); box-shadow: 3px 3px 8px rgba(0,0,0,0.1);">
+                                <div style="font-size: 1.5rem; margin-bottom: 8px;">✅</div>
+                                <h4 style="margin: 0 0 4px 0; color: #1565c0; font-size: 1rem;">习惯养成大师</h4>
+                                <p style="margin: 0; color: #666; font-size: 0.9rem;">完成 <strong>{{ totalCompletedHabits }}</strong> 次打卡</p>
+                            </div>
+                            
+                            <!-- 单日最高成就 -->
+                            <div class="achievement-card" style="background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%); border: 1px solid #9c27b0; border-radius: 8px 12px 8px 12px; padding: 12px; text-align: center; transform: rotate(-1.5deg); box-shadow: 3px 3px 8px rgba(0,0,0,0.1);">
+                                <div style="font-size: 1.5rem; margin-bottom: 8px;">💪</div>
+                                <h4 style="margin: 0 0 4px 0; color: #6a0080; font-size: 1rem;">爆发力惊人</h4>
+                                <p style="margin: 0; color: #666; font-size: 0.9rem;">单日最高 <strong>{{ maxHabits }}</strong> 个习惯</p>
+                            </div>
+                        </div>
+                        
+                        <!-- 成长建议单独一行 -->
+                        <div style="padding: 0 15px 15px 15px;">
+                            <div class="achievement-card" style="background: linear-gradient(135deg, #fffde7 0%, #fff9c4 100%); border: 1px solid #ffeb3b; border-radius: 12px 10px 12px 10px; padding: 12px; text-align: center; box-shadow: 3px 3px 8px rgba(0,0,0,0.1);">
+                                <div style="display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 6px;">
+                                    <span style="font-size: 1.5rem;">{{ adviceIcon }}</span>
+                                    <h4 style="margin: 0; color: #f57f17; font-size: 1rem;">成长建议</h4>
+                                </div>
+                                <p style="margin: 0; color: #666; font-size: 0.9rem;">{{ adviceText }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 星星历史记录 -->
+                <div class="card" style="margin-top: 16px; border: 2px solid #e8d6ff;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;" @click="toggleHistory">
+                        <h3><i class="fas fa-history"></i> 星星历史记录</h3>
+                        <i :class="{ 'fas fa-chevron-down': showHistory, 'fas fa-chevron-up': !showHistory }"></i>
+                    </div>
+                    <div v-if="showHistory">
+                        <div v-if="starHistory.length === 0" style="text-align: center; color: #b45a7a; padding: 20px;">
+                            暂无历史记录
+                        </div>
+                        <div v-else>
+                            <div v-for="(items, date) in groupedHistory" :key="date" style="margin-bottom: 16px;">
+                                <div style="font-weight: bold; color: #b45a7a; margin-bottom: 8px;">{{ date }}</div>
+                                <div class="history-list">
+                                    <div v-for="item in items" :key="item.id" class="history-item">
+                                        <div class="history-content">
+                                            <span v-if="item.type === 'gain'" style="color: #2c6e2c;">
+                                                {{ item.reason }} +{{ item.amount }}
+                                            </span>
+                                            <span v-else style="color: #b45a7a;">
+                                                {{ item.reason }} -{{ item.amount }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `,
+        setup() {
+            const totalStars = store.totalStars;
+            const streakDays = computed(() => store.calcStreak());
+            const ownedRewards = store.ownedRewards;
+            const showHistory = ref(false);
+            const showStats = ref(true); // 默认展开统计功能
+            const showAchievements = ref(true); // 默认展开成就功能
+            const starHistory = ref([]);
+            const groupedHistory = computed(() => {
+                const grouped = {};
+                starHistory.value.forEach(item => {
+                    if (!grouped[item.date]) {
+                        grouped[item.date] = [];
+                    }
+                    grouped[item.date].push(item);
+                });
+                return grouped;
+            });
+            
+            // 统计功能相关
+            const periods = ref([
+                { key: 'week', label: '本周' },
+                { key: 'month', label: '本月' },
+                { key: 'quarter', label: '本季' },
+                { key: 'year', label: '本年' }
+            ]);
+            const currentPeriod = ref('week');
+            const customStart = ref('');
+            const customEnd = ref('');
+            let chart = null;
+            const totalHabits = ref(0);
+            const maxHabits = ref(0);
+            const avgHabits = ref(0);
+            const adviceText = ref("");
+            const adviceIcon = ref("");
+            const adviceColor = ref("");
+            
+            // 星星获得统计相关
+            const showStarStats = ref(true); // 默认展开星星获得统计
+            const currentStarPeriod = ref('week');
+            const customStarStart = ref('');
+            const customStarEnd = ref('');
+            let starChart = null;
+            
+            const totalEarnedStars = computed(() => store.getTotalCompletedCount());
+            
+            const totalCompletedHabits = computed(() => {
+                let total = 0;
+                for (let date in store.dailyRecords.value) {
+                    const day = store.dailyRecords.value[date];
+                    for (let hid in day) if (day[hid] === true) total++;
+                }
+                return total;
+            });
+            
+            // 统计兑换过的礼物总数
+            const totalRedeemedRewards = computed(() => {
+                const history = localStorage.getItem('rewardHistory');
+                if (history) {
+                    const rewardHistory = JSON.parse(history);
+                    return rewardHistory.filter(item => item.type === 'gain').length;
+                }
+                return 0;
+            });
+            
+            const extraBonusCount = computed(() => {
+                const history = localStorage.getItem('starHistory');
+                if (history) {
+                    const starHistory = JSON.parse(history);
+                    // 计算获得的额外奖励
+                    const gainedBonus = starHistory.filter(item => 
+                        item.type === 'gain' && (item.reason === '超出目标额外奖励' || item.reason.startsWith('额外奖励：'))
+                    ).reduce((total, item) => total + item.amount, 0);
+                    // 计算取消的额外奖励
+                    const lostBonus = starHistory.filter(item => 
+                        item.type === 'lose' && item.reason === '取消后未超出目标，额外奖励取消'
+                    ).reduce((total, item) => total + item.amount, 0);
+                    return gainedBonus - lostBonus;
+                }
+                return 0;
+            });
+            
+            const totalSpentStars = computed(() => store.getTotalSpentStars());
+            
+            const loadStarHistory = () => {
+                // 从localStorage加载历史记录
+                const history = localStorage.getItem('starHistory');
+                if (history) {
+                    starHistory.value = JSON.parse(history);
+                } else {
+                    starHistory.value = [];
+                }
+            };
+            
+            const toggleHistory = () => {
+                showHistory.value = !showHistory.value;
+            };
+            
+            const toggleStats = () => {
+                showStats.value = !showStats.value;
+            };
+            
+            const toggleAchievements = () => {
+                showAchievements.value = !showAchievements.value;
+            };
+            
+            // 统计功能方法
+            const getDateRange = () => {
+                let start, end = new Date();
+                if (currentPeriod.value === 'week') {
+                    let today = new Date();
+                    let day = today.getDay();
+                    let diff = day === 0 ? 6 : day-1;
+                    start = new Date(today);
+                    start.setDate(today.getDate() - diff);
+                } else if (currentPeriod.value === 'month') {
+                    start = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+                } else if (currentPeriod.value === 'quarter') {
+                    let now = new Date();
+                    let quarter = Math.floor(now.getMonth() / 3);
+                    start = new Date(now.getFullYear(), quarter*3, 1);
+                } else if (currentPeriod.value === 'year') {
+                    start = new Date(new Date().getFullYear(), 0, 1);
+                } else if (currentPeriod.value === 'custom') {
+                    // 即使没有选择日期，也返回默认值
+                    if (customStart.value && customEnd.value) {
+                        start = new Date(customStart.value);
+                        end = new Date(customEnd.value);
+                    } else {
+                        // 默认显示最近7天
+                        start = new Date();
+                        start.setDate(start.getDate() - 6);
+                        end = new Date();
+                    }
+                }
+                if (!start) start = new Date();
+                return { start, end };
+            };
+            
+            const getDataForRange = () => {
+                let { start, end } = getDateRange();
+                let dates = [];
+                let values = [];
+                let cur = new Date(start);
+                while (cur <= end) {
+                    let y = cur.getFullYear();
+                    let m = String(cur.getMonth()+1).padStart(2,'0');
+                    let d = String(cur.getDate()).padStart(2,'0');
+                    let str = `${y}-${m}-${d}`;
+                    let count = store.getDayCompletedCount(str);
+                    dates.push(`${m}/${d}`);
+                    values.push(count);
+                    cur.setDate(cur.getDate() + 1);
+                }
+                return { labels: dates, data: values };
+            };
+            
+            const renderChart = () => {
+                const ctx = document.getElementById('statsChart')?.getContext('2d');
+                if (!ctx) return;
+                const { labels, data } = getDataForRange();
+                if (chart) chart.destroy();
+                chart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: '完成习惯数',
+                            data: data,
+                            borderColor: '#ff8ab5',
+                            backgroundColor: 'rgba(255,138,181,0.2)',
+                            tension: 0.3,
+                            fill: true,
+                            pointBackgroundColor: '#ff6699'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    stepSize: 1, // 设置y轴间隔为1
+                                    precision: 0 // 确保显示整数
+                                }
+                            }
+                        }
+                    }
+                });
+                const total = data.reduce((a,b)=>a+b,0);
+                const avg = (total/data.length).toFixed(1);
+                const max = Math.max(...data);
+                
+                // 更新计算属性
+                totalHabits.value = total;
+                maxHabits.value = max;
+                avgHabits.value = avg;
+                
+                // 设置建议文本和图标
+                if (avg >= store.dailyGoal.value) {
+                    adviceText.value = `太棒啦！你就像一个超级小英雄，超过了每日目标！`;
+                    adviceIcon.value = "🎉";
+                    adviceColor.value = "#2c6e2c";
+                } else if (avg >= store.dailyGoal.value-1) {
+                    adviceText.value = `好厉害！你就像一只努力的小蜜蜂，就快达到目标啦！`;
+                    adviceIcon.value = "🌸";
+                    adviceColor.value = "#b45a7a";
+                } else {
+                    adviceText.value = `加油哦！你就像一颗正在成长的小种子，每天多打卡一点点！`;
+                    adviceIcon.value = "✨";
+                    adviceColor.value = "#a55cff";
+                }
+            };
+            
+            const setPeriod = (p) => {
+                currentPeriod.value = p;
+                renderChart();
+            };
+            const toggleCustomPeriod = () => {
+                currentPeriod.value = 'custom';
+                renderChart();
+            };
+            const applyCustom = () => {
+                // 无论是否选择日期，都应用自定义时间段
+                currentPeriod.value = 'custom';
+                renderChart();
+                store.showToast("已应用自定义时间段", 1500);
+            };
+            
+            // 星星获得统计相关方法
+            const toggleStarStats = () => {
+                showStarStats.value = !showStarStats.value;
+                if (showStarStats.value) {
+                    setTimeout(() => {
+                        renderStarChart();
+                    }, 100);
+                }
+            };
+            const setStarPeriod = (p) => {
+                currentStarPeriod.value = p;
+                renderStarChart();
+            };
+            const toggleCustomStarPeriod = () => {
+                currentStarPeriod.value = 'custom';
+                renderStarChart();
+            };
+            const applyCustomStar = () => {
+                currentStarPeriod.value = 'custom';
+                renderStarChart();
+                store.showToast("已应用自定义时间段", 1500);
+            };
+            
+            // 获取星星获得统计的日期范围
+            const getStarDateRange = () => {
+                const today = store.getTodayStr();
+                if (currentStarPeriod.value === 'week') {
+                    const start = new Date();
+                    start.setDate(start.getDate() - 6);
+                    return { start, end: new Date() };
+                } else if (currentStarPeriod.value === 'month') {
+                    const start = new Date();
+                    start.setMonth(start.getMonth() - 1);
+                    return { start, end: new Date() };
+                } else if (currentStarPeriod.value === 'quarter') {
+                    const start = new Date();
+                    start.setMonth(start.getMonth() - 3);
+                    return { start, end: new Date() };
+                } else if (currentStarPeriod.value === 'year') {
+                    const start = new Date();
+                    start.setFullYear(start.getFullYear() - 1);
+                    return { start, end: new Date() };
+                } else if (currentStarPeriod.value === 'custom') {
+                    const start = customStarStart.value ? new Date(customStarStart.value) : new Date();
+                    start.setDate(start.getDate() - 6);
+                    const end = customStarEnd.value ? new Date(customStarEnd.value) : new Date();
+                    return { start, end };
+                }
+            };
+            
+            // 获取星星获得统计的数据
+            const getStarDataForRange = () => {
+                let { start, end } = getStarDateRange();
+                let dates = [];
+                let values = [];
+                let cur = new Date(start);
+                while (cur <= end) {
+                    let y = cur.getFullYear();
+                    let m = String(cur.getMonth()+1).padStart(2,'0');
+                    let d = String(cur.getDate()).padStart(2,'0');
+                    let str = `${y}-${m}-${d}`;
+                    // 计算当天获得的星星数量
+                    const history = localStorage.getItem('starHistory');
+                    let starCount = 0;
+                    if (history) {
+                        const starHistory = JSON.parse(history);
+                        starCount = starHistory.filter(item => 
+                            item.date === str && item.type === 'gain'
+                        ).reduce((total, item) => total + item.amount, 0);
+                    }
+                    dates.push(`${m}/${d}`);
+                    values.push(starCount);
+                    cur.setDate(cur.getDate() + 1);
+                }
+                return { labels: dates, data: values };
+            };
+            
+            // 渲染星星获得统计图表
+            const renderStarChart = () => {
+                const ctx = document.getElementById('starStatsChart')?.getContext('2d');
+                if (!ctx) return;
+                const { labels, data } = getStarDataForRange();
+                if (starChart) starChart.destroy();
+                starChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: '获得星星数',
+                            data: data,
+                            borderColor: '#ffb347',
+                            backgroundColor: 'rgba(255,179,71,0.2)',
+                            tension: 0.3,
+                            fill: true,
+                            pointBackgroundColor: '#ff9900'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    stepSize: 1, // 设置y轴间隔为1
+                                    precision: 0 // 确保显示整数
+                                }
+                            }
+                        }
+                    }
+                });
+            };
+            
+            // 初始化
+            loadStarHistory();
+            onMounted(() => { 
+                renderChart();
+                setTimeout(() => {
+                    renderStarChart();
+                }, 100);
+            });
+            watch([currentPeriod, customStart, customEnd], () => { if (currentPeriod.value !== 'custom') renderChart(); });
+            watch([currentStarPeriod, customStarStart, customStarEnd], () => { if (currentStarPeriod.value !== 'custom') renderStarChart(); });
+            
+            return {
+                totalStars,
+                streakDays,
+                ownedRewards,
+                showHistory,
+                showStats,
+                showAchievements,
+                showStarStats,
+                starHistory,
+                groupedHistory,
+                totalEarnedStars,
+                totalCompletedHabits,
+                totalRedeemedRewards,
+                extraBonusCount,
+                totalSpentStars,
+                toggleHistory,
+                toggleStats,
+                toggleAchievements,
+                toggleStarStats,
+                // 统计功能相关
+                periods,
+                currentPeriod,
+                customStart,
+                customEnd,
+                setPeriod,
+                toggleCustomPeriod,
+                applyCustom,
+                // 星星获得统计相关
+                currentStarPeriod,
+                customStarStart,
+                customStarEnd,
+                setStarPeriod,
+                toggleCustomStarPeriod,
+                applyCustomStar,
+                totalHabits,
+                maxHabits,
+                avgHabits,
+                adviceText,
+                adviceIcon,
+                adviceColor
+            };
+        }
+    };
+    
+    // 商店页
+    const ShopPage = {
+        template: `
+            <div class="card">
+                <h2><i class="fas fa-store"></i> 星光商店</h2>
+                <div class="reward-grid">
+                    <div v-for="reward in rewards" :key="reward.id" class="reward-card">
+                        <div style="font-size: 2.5rem;">{{ reward.icon }}</div>
+                        <div><strong>{{ reward.name }}</strong></div>
+                        <div>⭐ {{ reward.cost }}</div>
+                        <button class="btn" @click="buy(reward)">兑换</button>
+                    </div>
+                </div>
+                <div v-if="ownedRewards.length" class="card" style="margin-top: 16px;">
+                    <h3><i class="fas fa-gift"></i> 我的宝箱</h3>
+                    <div style="display: flex; gap: 10px; flex-wrap:wrap;">
+                        <div v-for="r in ownedRewards" :key="r.id" style="background:#ffe6f0; border-radius:40px; padding:6px 12px; display: flex; align-items: center; gap: 8px;">
+                            <span>{{ r.icon }} {{ r.name }}</span>
+                            <button class="btn" style="padding: 2px 8px; font-size: 0.8rem;" @click="useReward(r)">使用</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 礼物历史记录 -->
+                <div class="card" style="margin-top: 16px; border: 2px solid #d6ffed;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;" @click="toggleRewardHistory">
+                        <h3><i class="fas fa-history"></i> 礼物历史记录</h3>
+                        <i :class="{ 'fas fa-chevron-down': showRewardHistory, 'fas fa-chevron-up': !showRewardHistory }"></i>
+                    </div>
+                    <div v-if="showRewardHistory">
+                        <div v-if="rewardHistory.length === 0" style="text-align: center; color: #b45a7a; padding: 20px;">
+                            暂无礼物历史记录
+                        </div>
+                        <div v-else>
+                            <div v-for="(items, date) in groupedRewardHistory" :key="date" style="margin-bottom: 16px;">
+                                <div style="font-weight: bold; color: #b45a7a; margin-bottom: 8px;">{{ date }}</div>
+                                <div class="history-list">
+                                    <div v-for="item in items" :key="item.id" class="history-item">
+                                        <div class="history-content">
+                                            <span v-if="item.type === 'gain'" style="color: #2c6e2c;">
+                                                获得 {{ item.reward.icon }} {{ item.reward.name }}
+                                            </span>
+                                            <span v-else style="color: #b45a7a;">
+                                                使用 {{ item.reward.icon }} {{ item.reward.name }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `,
+        setup() {
+            const rewards = store.rewards;
+            const ownedRewards = store.ownedRewards;
+            const totalStars = store.totalStars;
+            const rewardHistory = ref([]);
+            const showRewardHistory = ref(false);
+            
+            // 加载礼物历史记录
+            const loadRewardHistory = () => {
+                const history = localStorage.getItem('rewardHistory');
+                if (history) {
+                    rewardHistory.value = JSON.parse(history);
+                }
+            };
+            
+            // 按天分组礼物历史记录
+            const groupedRewardHistory = computed(() => {
+                const grouped = {};
+                rewardHistory.value.forEach(item => {
+                    if (!grouped[item.date]) {
+                        grouped[item.date] = [];
+                    }
+                    grouped[item.date].push(item);
+                });
+                return grouped;
+            });
+            
+            // 切换礼物历史记录显示
+            const toggleRewardHistory = () => {
+                showRewardHistory.value = !showRewardHistory.value;
+            };
+            
+            // 初始化加载礼物历史记录
+            loadRewardHistory();
+            const buy = (reward) => {
+                if (totalStars.value >= reward.cost) {
+                    // 允许重复兑换同一个礼物
+                    store.ownedRewards.value.push({ ...reward });
+                    
+                    // 添加兑换礼物的星星历史记录
+                    const today = store.getTodayStr();
+                    const starHistory = localStorage.getItem('starHistory');
+                    const starHistoryData = starHistory ? JSON.parse(starHistory) : [];
+                    
+                    starHistoryData.unshift({
+                        id: Date.now() + '_' + Math.random(),
+                        date: today,
+                        type: 'lose',
+                        amount: reward.cost,
+                        reason: `兑换礼物：${reward.name}`
+                    });
+                    
+                    localStorage.setItem('starHistory', JSON.stringify(starHistoryData));
+                    store.starHistory.value = starHistoryData;
+                    
+                    // 添加礼物获得的历史记录到礼物历史
+                    const rewardHistory = localStorage.getItem('rewardHistory');
+                    const rewardHistoryData = rewardHistory ? JSON.parse(rewardHistory) : [];
+                    
+                    rewardHistoryData.unshift({
+                        id: Date.now() + '_' + Math.random(),
+                        date: today,
+                        type: 'gain',
+                        reward: { ...reward }
+                    });
+                    
+                    localStorage.setItem('rewardHistory', JSON.stringify(rewardHistoryData));
+                    store.saveAll();
+                    
+                    // 强制刷新数据
+                    store.totalStars.value = store.getTotalCompletedCount() - store.getTotalSpentStars();
+                    loadRewardHistory();
+                    
+                    store.showToast(`🎁 获得 ${reward.icon} ${reward.name}！好漂亮呀～`, 2000);
+                } else {
+                    store.showToast(`⭐ 星星不足，完成更多习惯吧～`, 2000);
+                }
+            };
+            
+            const useReward = (reward) => {
+                if (confirm(`确定要使用 ${reward.icon} ${reward.name} 吗？使用后将从宝箱中移除。`)) {
+                    const index = store.ownedRewards.value.findIndex(r => r.id === reward.id);
+                    if (index !== -1) {
+                        store.ownedRewards.value.splice(index, 1);
+                        
+                        // 添加礼物使用的历史记录到礼物历史
+                        const today = store.getTodayStr();
+                        const history = localStorage.getItem('rewardHistory');
+                        const rewardHistory = history ? JSON.parse(history) : [];
+                        
+                        rewardHistory.unshift({
+                            id: Date.now() + '_' + Math.random(),
+                            date: today,
+                            type: 'use',
+                            reward: { ...reward }
+                        });
+                        
+                        localStorage.setItem('rewardHistory', JSON.stringify(rewardHistory));
+                        store.saveAll();
+                        
+                        // 强制刷新数据
+                        loadRewardHistory();
+                        
+                        store.showToast(`✨ ${reward.icon} ${reward.name} 使用成功！`, 2000);
+                    }
+                }
+            };
+            return { 
+                rewards, 
+                ownedRewards, 
+                totalStars, 
+                buy, 
+                useReward, 
+                rewardHistory, 
+                showRewardHistory, 
+                groupedRewardHistory, 
+                toggleRewardHistory 
+            };
+        }
+    };
+    
+    // 设置页
+    const SettingsPage = {
+        template: `
+            <div class="card">
+                <h2><i class="fas fa-cog"></i> 魔法设置</h2>
+                <div class="setting-group">
+                    <label>小朋友名字</label>
+                    <input v-model="childName" @change="saveBasic">
+                </div>
+                <div class="setting-group">
+                    <label>页面标题</label>
+                    <input v-model="pageTitle" @change="saveBasic">
+                </div>
+                <div class="setting-group">
+                    <label>每日打卡目标 (习惯个数)</label>
+                    <input type="number" v-model.number="dailyGoal" min="1" max="10" @change="saveBasic">
+                </div>
+                
+                <!-- 额外奖励 -->
+                <div class="card" style="margin-top: 16px; border: 2px solid #ffd6e8; background: #fff9fc;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;" @click="toggleCustom">
+                        <h3><i class="fas fa-plus-circle"></i> 额外奖励</h3>
+                        <i :class="{ 'fas fa-chevron-down': showCustom, 'fas fa-chevron-up': !showCustom }"></i>
+                    </div>
+                    <div v-if="showCustom">
+                        <div class="flex-row" style="margin-bottom: 12px;">
+                            <input v-model="customReason" placeholder="奖励原因" style="flex: 2;">
+                            <input v-model.number="customAmount" type="number" min="1" placeholder="星星数" style="width: 100px;">
+                            <button class="btn" @click="addCustomStar">➕</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 习惯管理 -->
+                <div class="card" style="margin-top: 16px; border: 2px solid #e8d6ff; background: #f9f9ff;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;" @click="toggleHabits">
+                        <h3><i class="fas fa-list"></i> 习惯管理</h3>
+                        <i :class="{ 'fas fa-chevron-down': showHabits, 'fas fa-chevron-up': !showHabits }"></i>
+                    </div>
+                    <div v-if="showHabits">
+                        <div v-for="h in habits" :key="h.id" class="habit-item" style="margin-bottom: 8px;">
+                            <div class="habit-left"><span class="habit-icon" style="width:40px; height:40px;">{{ h.icon }}</span> {{ h.name }}</div>
+                            <button class="btn" style="background:#ffa5c0;" @click="deleteHabit(h.id)">－</button>
+                        </div>
+                        <div class="flex-row" style="margin-top: 10px;">
+                            <div style="display: flex; gap: 8px; flex: 1;">
+                                <input v-model="newHabitName" placeholder="新习惯名称" style="flex: 1;">
+                                <button class="btn" @click="addHabit">➕</button>
+                            </div>
+                            <div class="icon-selector" style="flex-wrap:nowrap; overflow-x:auto;">
+                                <span v-for="ic in iconList" :key="ic" class="icon-option" :class="{selected: newHabitIcon === ic}" @click="newHabitIcon = ic">{{ ic }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 礼物管理 -->
+                <div class="card" style="margin-top: 16px; border: 2px solid #d6ffed; background: #f9fffc;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;" @click="toggleRewards">
+                        <h3><i class="fas fa-gem"></i> 礼物管理</h3>
+                        <i :class="{ 'fas fa-chevron-down': showRewards, 'fas fa-chevron-up': !showRewards }"></i>
+                    </div>
+                    <div v-if="showRewards">
+                        <div v-for="r in rewards" :key="r.id" class="habit-item" style="margin-bottom: 8px;">
+                            <div><span style="font-size:1.8rem;">{{ r.icon }}</span> {{ r.name }} (⭐{{ r.cost }})</div>
+                            <button class="btn" style="background:#ffa5c0;" @click="deleteReward(r.id)">－</button>
+                        </div>
+                        <div class="flex-row" style="margin-top: 10px;">
+                            <div style="display: flex; gap: 8px; flex: 1;">
+                                <input v-model="newRewardName" placeholder="礼物名称" style="flex: 1;">
+                                <input v-model.number="newRewardCost" placeholder="星星数" type="number" style="width:80px">
+                                <button class="btn" @click="addReward">➕</button>
+                            </div>
+                            <div class="icon-selector" style="flex-wrap:nowrap; overflow-x:auto;">
+                                <span v-for="ic in iconList" :key="ic" class="icon-option" :class="{selected: newRewardIcon === ic}" @click="newRewardIcon = ic">{{ ic }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 规则说明 -->
+                <div class="card" style="margin-top: 16px; border: 2px solid #d6e8ff; background: #f9fcff;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;" @click="toggleRules">
+                        <h3><i class="fas fa-book"></i> 规则说明</h3>
+                        <i :class="{ 'fas fa-chevron-down': showRules, 'fas fa-chevron-up': !showRules }"></i>
+                    </div>
+                    <div v-if="showRules">
+                        <div style="padding: 10px;">
+                            <h4>🌟 星星获取规则</h4>
+                            <ul style="list-style-type: disc; margin-left: 20px; margin-top: 5px;">
+                                <li>完成一个习惯打卡：+1星星</li>
+                                <li>超出每日目标额外奖励：+1星星（仅第一次超出时获得）</li>
+                                <li>取消打卡：-1星星</li>
+                                <li>取消后若不再超出目标，额外奖励也会被取消</li>
+                                <li>额外奖励：可通过设置页面手动添加星星</li>
+                            </ul>
+                            
+                            <h4>🎁 礼物兑换规则</h4>
+                            <ul style="list-style-type: disc; margin-left: 20px; margin-top: 5px;">
+                                <li>每个礼物需要消耗一定数量的星星</li>
+                                <li>可以重复兑换同一个礼物</li>
+                                <li>兑换的礼物会添加到"我的宝箱"</li>
+                                <li>使用礼物后，礼物会从宝箱中移除</li>
+                                <li>兑换礼物不会影响"今日获得星星"的统计</li>
+                            </ul>
+                            
+                            <h4>📊 统计规则</h4>
+                            <ul style="list-style-type: disc; margin-left: 20px; margin-top: 5px;">
+                                <li>首页显示当天获得的星星数量（不含兑换礼物消耗）</li>
+                                <li>个人中心显示当前剩余的星星总数（累计获得 - 兑换礼物消耗）</li>
+                                <li>个人成就显示累计获得的星星总数</li>
+                                <li>习惯统计和星星获得统计可以选择不同时间段</li>
+                                <li>连续打卡天数：从今天往前计算连续打卡的天数</li>
+                            </ul>
+                            
+                            <h4>💾 数据存储</h4>
+                            <ul style="list-style-type: disc; margin-left: 20px; margin-top: 5px;">
+                                <li>所有数据存储在本地浏览器中</li>
+                                <li>清除浏览器缓存会导致数据丢失</li>
+                                <li>可以通过"重置所有数据"按钮清空所有数据</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 数据管理 -->
+                <div class="card" style="margin-top: 16px; border: 2px solid #d6eaff; background: #f0f8ff;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;" @click="toggleSync">
+                        <h3><i class="fas fa-database"></i> 数据管理</h3>
+                        <i :class="{ 'fas fa-chevron-down': showSync, 'fas fa-chevron-up': !showSync }"></i>
+                    </div>
+                    <div v-if="showSync">
+                        <p style="margin: 12px 0; color: #666; font-size: 0.9rem;">通过导入/导出功能在不同设备间同步数据</p>
+                        <div class="flex-row" style="gap: 12px; margin-bottom: 16px;">
+                            <button class="btn" style="background: #91c8e4; flex: 1;" @click="exportData">📤 导出数据</button>
+                            <input type="file" ref="fileInput" accept=".json" @change="importData" style="display: none;">
+                            <button class="btn" style="background: #91e4c8; flex: 1;" @click="$refs.fileInput.click()">📥 导入数据</button>
+                        </div>
+                        <button class="btn" style="width: 100%; background:#e2a1bb;" @click="resetData">✨ 重置所有数据 ✨</button>
+                    </div>
+                </div>
+            </div>
+        `,
+        setup() {
+            const habits = store.habits;
+            const rewards = store.rewards;
+            const childName = store.childName;
+            const pageTitle = store.pageTitle;
+            const dailyGoal = store.dailyGoal;
+            const newHabitName = ref("");
+            const newHabitIcon = ref("🌸");
+            const newRewardName = ref("");
+            const newRewardCost = ref(5);
+            const newRewardIcon = ref("🎁");
+            const iconList = ["🌸","🪥","🧸","📚","🥛","🌙","🏃‍♀️","🎨","🎵","🧹","🐶","🦄","⭐","🌈","👑","🦋","❄️","⛄","👸"];
+            
+            // 星星奖励相关
+            const customReason = ref("");
+            const customAmount = ref(1);
+            const starHistory = ref([]);
+            
+            // 可折叠功能相关
+            const showCustom = ref(true); // 默认展开星星奖励
+            const showHabits = ref(true); // 默认展开习惯管理
+            const showRewards = ref(true); // 默认展开礼物管理
+            const showRules = ref(false); // 默认展开规则说明
+            const showSync = ref(false); // 数据同步面板
+            
+            const saveBasic = () => { store.saveAll(); store.showToast("设置已保存~", 1500); };
+            const addHabit = () => {
+                if (!newHabitName.value.trim()) return store.showToast("请输入习惯名称", 1500);
+                const newId = Date.now() + "_" + Math.random();
+                habits.value.push({ id: newId, name: newHabitName.value.trim(), icon: newHabitIcon.value });
+                const today = store.getTodayStr();
+                if (!store.dailyRecords.value[today]) store.dailyRecords.value[today] = {};
+                store.dailyRecords.value[today][newId] = false;
+                store.saveAll();
+                newHabitName.value = "";
+                store.showToast("✨ 新习惯加入魔法清单", 1500);
+            };
+            const deleteHabit = (id) => {
+                if (habits.value.length <= 1) return store.showToast("至少保留一个习惯哟", 1500);
+                const habit = habits.value.find(h => h.id === id);
+                const habitName = habit ? habit.name : "习惯";
+                if (confirm(`确定要删除 ${habitName} 吗？`)) {
+                    habits.value = habits.value.filter(h => h.id !== id);
+                    for (let date in store.dailyRecords.value) delete store.dailyRecords.value[date][id];
+                    store.saveAll();
+                    store.showToast("已删除习惯", 1500);
+                }
+            };
+            const addReward = () => {
+                if (!newRewardName.value.trim()) return store.showToast("请输入礼物名称", 1500);
+                const newId = Date.now() + "_r";
+                rewards.value.push({ id: newId, name: newRewardName.value.trim(), icon: newRewardIcon.value, cost: newRewardCost.value || 5 });
+                store.saveAll();
+                newRewardName.value = "";
+                newRewardCost.value = 5;
+                store.showToast("🎁 新礼物上架啦", 1500);
+            };
+            const deleteReward = (id) => {
+                const reward = rewards.value.find(r => r.id === id);
+                const rewardName = reward ? reward.name : "礼物";
+                if (confirm(`确定要删除 ${rewardName} 吗？`)) {
+                    rewards.value = rewards.value.filter(r => r.id !== id);
+                    store.saveAll();
+                    store.showToast("已删除礼物", 1500);
+                }
+            };
+            const resetData = () => {
+                if (confirm("重置会清除所有打卡记录和星星，恢复默认习惯和礼物，确定吗？")) {
+                    localStorage.clear();
+                    window.location.reload();
+                }
+            };
+            
+            // 数据同步相关方法
+            const toggleSync = () => {
+                showSync.value = !showSync.value;
+            };
+            
+            const exportData = () => {
+                // 收集所有数据
+                const allData = {
+                    habits: store.habits.value,
+                    rewards: store.rewards.value,
+                    childName: store.childName.value,
+                    pageTitle: store.pageTitle.value,
+                    dailyGoal: store.dailyGoal.value,
+                    dailyRecords: store.dailyRecords.value,
+                    starHistory: store.starHistory.value,
+                    ownedRewards: store.ownedRewards.value,
+                    totalSpentStars: store.totalSpentStars.value,
+                    rewardHistory: JSON.parse(localStorage.getItem('rewardHistory') || '[]')
+                };
+                
+                // 创建JSON文件
+                const dataStr = JSON.stringify(allData, null, 2);
+                const dataBlob = new Blob([dataStr], { type: 'application/json' });
+                const url = URL.createObjectURL(dataBlob);
+                
+                // 创建下载链接
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `habit-tracker-${new Date().toISOString().slice(0, 10)}.json`;
+                link.style.display = 'none';
+                
+                // 添加到文档并触发点击
+                document.body.appendChild(link);
+                link.click();
+                
+                // 清理
+                setTimeout(() => {
+                    document.body.removeChild(link);
+                    URL.revokeObjectURL(url);
+                }, 100);
+                
+                store.showToast("数据导出成功！", 1500);
+            };
+            
+            const importData = (event) => {
+                const file = event.target.files[0];
+                if (!file) return;
+                
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const importedData = JSON.parse(e.target.result);
+                        
+                        // 确认导入
+                        if (confirm("确定要导入数据吗？这会覆盖当前所有数据。")) {
+                            // 导入所有数据
+                            store.habits.value = importedData.habits || [];
+                            store.rewards.value = importedData.rewards || [];
+                            store.childName.value = importedData.childName || "小公主";
+                            store.pageTitle.value = importedData.pageTitle || "习惯打卡";
+                            store.dailyGoal.value = importedData.dailyGoal || 3;
+                            store.dailyRecords.value = importedData.dailyRecords || {};
+                            store.starHistory.value = importedData.starHistory || [];
+                            store.ownedRewards.value = importedData.ownedRewards || [];
+                            store.totalSpentStars.value = importedData.totalSpentStars || 0;
+                            
+                            // 导入礼物历史记录
+                            if (importedData.rewardHistory) {
+                                localStorage.setItem('rewardHistory', JSON.stringify(importedData.rewardHistory));
+                            }
+                            
+                            // 保存到localStorage
+                            store.saveAll();
+                            
+                            // 刷新页面
+                            window.location.reload();
+                        }
+                    } catch (error) {
+                        store.showToast("数据导入失败，请检查文件格式。", 1500);
+                    }
+                };
+                reader.readAsText(file);
+                
+                // 重置文件输入
+                event.target.value = '';
+            };
+            
+            const addCustomStar = () => {
+                if (!customReason.value.trim()) {
+                    store.showToast("请输入事项原因", 1500);
+                    return;
+                }
+                if (customAmount.value < 1) {
+                    store.showToast("星星数必须大于0", 1500);
+                    return;
+                }
+                
+                // 添加到历史记录
+                const today = store.getTodayStr();
+                const historyItem = {
+                    id: Date.now() + '_' + Math.random(),
+                    date: today,
+                    type: 'gain',
+                    amount: customAmount.value,
+                    reason: `额外奖励：${customReason.value.trim()}`
+                };
+                
+                // 更新 store 中的 starHistory
+                store.starHistory.value.unshift(historyItem);
+                
+                // 保存到 localStorage
+                localStorage.setItem('starHistory', JSON.stringify(store.starHistory.value));
+                store.saveAll();
+                
+                // 显示成功消息
+                store.showToast(`🎉 成功添加 ${customAmount.value} 颗星星！`, 2000);
+                
+                // 重置表单
+                customReason.value = "";
+                customAmount.value = 1;
+            };
+            
+            // 可折叠功能方法
+            const toggleCustom = () => {
+                showCustom.value = !showCustom.value;
+            };
+            
+            const toggleHabits = () => {
+                showHabits.value = !showHabits.value;
+            };
+            
+            const toggleRewards = () => {
+                showRewards.value = !showRewards.value;
+            };
+            
+            const toggleRules = () => {
+                showRules.value = !showRules.value;
+            };
+            
+            return { habits, rewards, childName, pageTitle, dailyGoal, newHabitName, newHabitIcon, newRewardName, newRewardCost, newRewardIcon, iconList, saveBasic, addHabit, deleteHabit, addReward, deleteReward, resetData, customReason, customAmount, addCustomStar, showCustom, showHabits, showRewards, showRules, showSync, toggleCustom, toggleHabits, toggleRewards, toggleRules, toggleSync, exportData, importData };
+        }
+    };
+    
+    const router = createRouter({
+        history: createWebHashHistory(),
+        routes: [
+            { path: '/', component: HomePage },
+            { path: '/profile', component: ProfilePage },
+            { path: '/shop', component: ShopPage },
+            { path: '/settings', component: SettingsPage }
+        ]
+    });
+    
+    const App = {
+        setup() {
+            const currentPath = ref(router.currentRoute.value.path);
+            router.afterEach((to) => {
+                currentPath.value = to.path;
+            });
+            const goTo = (path) => {
+                router.push(path);
+            };
+            onMounted(() => {
+                store.loadAll();
+                currentPath.value = router.currentRoute.value.path;
+            });
+            return { childName: store.childName, pageTitle: store.pageTitle, toastMsg: store.toastMsg, effects: store.effects, currentPath, goTo };
+        },
+        template: `
+            <div class="app-container">
+                <div class="princess-name-header">
+                    <i class="fas fa-crown"></i> {{ childName }} 的 {{ pageTitle }} <i class="fas fa-star"></i>
+                </div>
+                <!-- 醒目导航按钮 -->
+                <div class="nav-bar">
+                    <button class="nav-btn" :class="{ active: currentPath === '/' }" @click="goTo('/')">
+                        <i class="fas fa-home"></i> 首页
+                    </button>
+                    <button class="nav-btn" :class="{ active: currentPath === '/profile' }" @click="goTo('/profile')">
+                        <i class="fas fa-user-circle"></i> 个人
+                    </button>
+                    <button class="nav-btn" :class="{ active: currentPath === '/shop' }" @click="goTo('/shop')">
+                        <i class="fas fa-gem"></i> 商店
+                    </button>
+                    <button class="nav-btn" :class="{ active: currentPath === '/settings' }" @click="goTo('/settings')">
+                        <i class="fas fa-sliders-h"></i> 设置
+                    </button>
+                </div>
+                
+                <router-view></router-view>
+            </div>
+            <div v-if="toastMsg" class="toast">{{ toastMsg }}</div>
+            <div v-for="(effect, idx) in effects" :key="idx" class="star-effect" :style="{ left: effect.x + 'px', top: effect.y + 'px' }">{{ effect.emoji }}</div>
+        `
+    };
+    
+    const app = createApp(App);
+    app.use(router);
+    app.mount('#app');
+</script>
+</body>
+</html>
