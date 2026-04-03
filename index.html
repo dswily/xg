@@ -708,6 +708,7 @@
         childName: ref("小公主"),
         pageTitle: ref("习惯魔法城堡"),
         dailyGoal: ref(3),
+        rewardHistory: ref([]),
         toastMsg: ref(""),
         effects: ref([]),
         
@@ -870,11 +871,7 @@
                 this.starHistory.value = jsonData.starHistory || [];
                 this.ownedRewards.value = jsonData.ownedRewards || [];
                 this.totalSpentStars.value = jsonData.totalSpentStars || 0;
-                
-                // 处理礼物历史记录
-                if (jsonData.rewardHistory) {
-                    localStorage.setItem('rewardHistory', JSON.stringify(jsonData.rewardHistory));
-                }
+                this.rewardHistory.value = jsonData.rewardHistory || [];
                 
                 console.log('从GitHub加载数据成功');
                 this.showToast('从云端加载数据成功', 2500);
@@ -922,6 +919,11 @@
                 const goal = localStorage.getItem('dailyGoal');
                 if (goal) this.dailyGoal.value = parseInt(goal);
                 
+                // 加载礼物历史记录
+                const rewardHistory = localStorage.getItem('rewardHistory');
+                if (rewardHistory) this.rewardHistory.value = JSON.parse(rewardHistory);
+                else this.rewardHistory.value = [];
+                
                 const today = this.getTodayStr();
                 if (!this.dailyRecords.value[today]) this.dailyRecords.value[today] = {};
                 let changed = false;
@@ -961,7 +963,7 @@
             this.starHistory.value = [];
             this.ownedRewards.value = [];
             this.totalSpentStars.value = 0;
-            localStorage.setItem('rewardHistory', JSON.stringify([]));
+            this.rewardHistory.value = [];
             
             const today = this.getTodayStr();
             this.dailyRecords.value[today] = {};
@@ -984,7 +986,7 @@
                     starHistory: this.starHistory.value,
                     ownedRewards: this.ownedRewards.value,
                     totalSpentStars: this.totalSpentStars.value,
-                    rewardHistory: JSON.parse(localStorage.getItem('rewardHistory') || '[]')
+                    rewardHistory: this.rewardHistory.value
                 };
                 
                 // 检查配置是否完整
@@ -1059,6 +1061,7 @@
                 localStorage.setItem('childName', this.childName.value);
                 localStorage.setItem('pageTitle', this.pageTitle.value);
                 localStorage.setItem('dailyGoal', this.dailyGoal.value);
+                localStorage.setItem('rewardHistory', JSON.stringify(this.rewardHistory.value));
                 console.log('保存到localStorage成功');
             } catch (error) {
                 console.error('保存到localStorage失败:', error);
@@ -1502,12 +1505,7 @@
             
             // 统计兑换过的礼物总数
             const totalRedeemedRewards = computed(() => {
-                const history = localStorage.getItem('rewardHistory');
-                if (history) {
-                    const rewardHistory = JSON.parse(history);
-                    return rewardHistory.filter(item => item.type === 'gain').length;
-                }
-                return 0;
+                return store.rewardHistory.value.filter(item => item.type === 'gain').length;
             });
             
             const extraBonusCount = computed(() => {
@@ -1906,10 +1904,7 @@
             
             // 加载礼物历史记录
             const loadRewardHistory = () => {
-                const history = localStorage.getItem('rewardHistory');
-                if (history) {
-                    rewardHistory.value = JSON.parse(history);
-                }
+                rewardHistory.value = store.rewardHistory.value;
             };
             
             // 按天分组礼物历史记录
@@ -1953,17 +1948,12 @@
                     store.starHistory.value = starHistoryData;
                     
                     // 添加礼物获得的历史记录到礼物历史
-                    const rewardHistory = localStorage.getItem('rewardHistory');
-                    const rewardHistoryData = rewardHistory ? JSON.parse(rewardHistory) : [];
-                    
-                    rewardHistoryData.unshift({
+                    store.rewardHistory.value.unshift({
                         id: Date.now() + '_' + Math.random(),
                         date: today,
                         type: 'gain',
                         reward: { ...reward }
                     });
-                    
-                    localStorage.setItem('rewardHistory', JSON.stringify(rewardHistoryData));
                     store.saveAll();
                     
                     // 强制刷新数据
@@ -1984,17 +1974,12 @@
                         
                         // 添加礼物使用的历史记录到礼物历史
                         const today = store.getTodayStr();
-                        const history = localStorage.getItem('rewardHistory');
-                        const rewardHistory = history ? JSON.parse(history) : [];
-                        
-                        rewardHistory.unshift({
+                        store.rewardHistory.value.unshift({
                             id: Date.now() + '_' + Math.random(),
                             date: today,
                             type: 'use',
                             reward: { ...reward }
                         });
-                        
-                        localStorage.setItem('rewardHistory', JSON.stringify(rewardHistory));
                         store.saveAll();
                         
                         // 强制刷新数据
@@ -2357,7 +2342,19 @@
             };
             const resetData = () => {
                 if (confirm("重置会清除所有打卡记录和星星，恢复默认习惯和礼物，确定吗？")) {
+                    // 保存GitHub配置
+                    const githubRepoOwner = localStorage.getItem('githubRepoOwner');
+                    const githubRepoName = localStorage.getItem('githubRepoName');
+                    const githubToken = localStorage.getItem('githubToken');
+                    
+                    // 清除所有数据
                     localStorage.clear();
+                    
+                    // 恢复GitHub配置
+                    if (githubRepoOwner) localStorage.setItem('githubRepoOwner', githubRepoOwner);
+                    if (githubRepoName) localStorage.setItem('githubRepoName', githubRepoName);
+                    if (githubToken) localStorage.setItem('githubToken', githubToken);
+                    
                     window.location.reload();
                 }
             };
@@ -2379,7 +2376,7 @@
                     starHistory: store.starHistory.value,
                     ownedRewards: store.ownedRewards.value,
                     totalSpentStars: store.totalSpentStars.value,
-                    rewardHistory: JSON.parse(localStorage.getItem('rewardHistory') || '[]')
+                    rewardHistory: store.rewardHistory.value
                 };
                 
                 // 创建JSON文件
@@ -2430,7 +2427,7 @@
                             
                             // 导入礼物历史记录
                             if (importedData.rewardHistory) {
-                                localStorage.setItem('rewardHistory', JSON.stringify(importedData.rewardHistory));
+                                store.rewardHistory.value = importedData.rewardHistory;
                             }
                             
                             // 保存到localStorage
